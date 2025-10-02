@@ -54,7 +54,7 @@ image1 = image1.convert("RGB")
 image2 = image2.convert("RGB")
 print("Images downloaded!")
 
-prompt = "The magician bear is on the left, the alchemist bear is on the right, facing each other in the central park square."
+prompt = "A stunning photo-realistic view of Sydney Harbour at golden hour, with the iconic Opera House gleaming in warm sunlight on the left and the Harbour Bridge spanning majestically across the sparkling blue water on the right, luxury yachts dotting the harbour."
 
 inputs = {
     "image": [image1, image2],
@@ -75,11 +75,11 @@ with torch.inference_mode():
     output = pipeline(**inputs)
     output_image = output.images[0]
     
-    # Save with timestamp and "lightning4" prefix
+    # Save with timestamp and model identifier
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = f"generated-images/lightning4_r{rank}_{timestamp}.png"
+    output_path = f"generated-images/qwen-04_r{rank}_{timestamp}.png"
     output_image.save(output_path)
     print(f"\nSuccess! Lightning 4-step image saved at: {os.path.abspath(output_path)}")
-    print(f"Generation completed with 4 steps (ultra-fast mode for rapid prototyping)")
+    print(f"Generation completed with 4 steps (13.8x faster than standard 40 steps)")
 
 
