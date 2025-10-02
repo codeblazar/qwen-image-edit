@@ -36,9 +36,10 @@ AI-powered multi-image editing using Qwen's Image Edit model with quantized tran
 
 This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality multi-image AI editing on consumer GPUs like the RTX 4090 (24GB VRAM).
 
-**Two scripts available:**
+**Three scripts available:**
 - `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
 - `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
+- `qwen_image_edit_lightning_4step.py` - Lightning 4-step model (ultra-fast, ~10s)
 
 ## ✨ Features
 
@@ -172,8 +173,11 @@ cd C:\Projects\qwen-image-edit
 # Option 1: Standard model (best quality, slower)
 python qwen_image_edit_nunchaku.py
 
-# Option 2: Lightning model (fast, very good quality)
+# Option 2: Lightning 8-step model (fast, very good quality)
 python qwen_image_edit_lightning.py
+
+# Option 3: Lightning 4-step model (ultra-fast, good quality)
+python qwen_image_edit_lightning_4step.py
 ```
 
 The script will:
@@ -184,9 +188,13 @@ The script will:
 
 **Generation Time**: 
 - Standard: ~2:45 (40 steps)
-- Lightning: ~21s (8 steps) ⚡ **7.7x faster!**
+- Lightning 8-step: ~21s ⚡ **7.7x faster!**
+- Lightning 4-step: ~10s ⚡⚡ **16x faster!**
 
-**Output**: All generated images are saved in the `generated-images/` folder with timestamps to prevent overwriting.
+**Output**: All generated images are saved in the `generated-images/` folder with timestamps:
+- Standard: `output_r128_YYYYMMDD_HHMMSS.png`
+- Lightning 8-step: `lightning_r128_YYYYMMDD_HHMMSS.png`
+- Lightning 4-step: `lightning4_r128_YYYYMMDD_HHMMSS.png`
 
 ## 📊 Performance
 
@@ -200,15 +208,17 @@ The script will:
 
 ```
 qwen-image-edit/
-├── .venv/                          # Virtual environment (do not commit)
-├── generated-images/               # Generated images output folder
-├── qwen_image_edit_nunchaku.py    # Main script
-├── check.ps1                       # Prerequisites checker
-├── install-nunchaku-patched.ps1   # Installation helper
-├── requirements.txt                # Python dependencies
-├── README.md                       # This file
-├── TODO.txt                        # TODO list and improvements
-└── .gitignore                      # Git ignore rules
+├── .venv/                                    # Virtual environment (do not commit)
+├── generated-images/                         # Generated images output folder
+├── qwen_image_edit_nunchaku.py              # Standard 40-step (best quality)
+├── qwen_image_edit_lightning.py             # Lightning 8-step (fast)
+├── qwen_image_edit_lightning_4step.py       # Lightning 4-step (ultra-fast)
+├── check.ps1                                 # Prerequisites checker
+├── install-nunchaku-patched.ps1             # Installation helper
+├── requirements.txt                          # Python dependencies
+├── README.md                                 # This file
+├── TODO.txt                                  # TODO list and improvements
+└── .gitignore                                # Git ignore rules
 ```
 
 ## 🔧 Model Options
@@ -298,13 +308,13 @@ inputs = {
 
 ### 📋 Quick Reference Table
 
-| Model Type | Steps | true_cfg_scale | Time | Quality |
-|------------|-------|----------------|------|---------|
-| Standard r128 | 40 | 4.0 | ~2:45 | Best |
-| Lightning 8-step r128 | 8 | 1.0 | ~21s | Very Good |
-| Lightning 4-step r128 | 4 | 1.0 | ~10s | Good |
-| Standard r32 | 40 | 4.0 | ~2:00 | Good |
-| Lightning 8-step r32 | 8 | 1.0 | ~18s | Good |
+| Model Type | Steps | true_cfg_scale | Time | Quality | Script |
+|------------|-------|----------------|------|---------|--------|
+| Standard r128 | 40 | 4.0 | ~2:45 | Best | `qwen_image_edit_nunchaku.py` |
+| Lightning 8-step r128 | 8 | 1.0 | ~21s | Very Good | `qwen_image_edit_lightning.py` |
+| Lightning 4-step r128 | 4 | 1.0 | ~10s | Good | `qwen_image_edit_lightning_4step.py` |
+| Standard r32 | 40 | 4.0 | ~2:00 | Good | (modify rank in script) |
+| Lightning 8-step r32 | 8 | 1.0 | ~18s | Good | (modify rank in script) |
 
 ### ❌ DO NOT USE: Full Model (Will Crash!)
 
