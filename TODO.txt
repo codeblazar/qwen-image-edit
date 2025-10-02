@@ -1,0 +1,73 @@
+Qwen Image Edit Project - TODO List
+====================================
+
+IMPROVEMENTS IDENTIFIED FROM OUTPUT:
+====================================
+
+[ ] Install hf_xet for better download performance
+    Command: pip install hf_xet
+    OR: pip install huggingface_hub[hf_xet]
+    Benefit: Faster model downloads from Hugging Face Hub using Xet Storage
+    Issue: Warning appears 8 times during download (spammy)
+
+[ ] Suppress/handle repeated "Xet Storage" warnings
+    Currently: Same warning printed 8+ times
+    Solution: Either install hf_xet or suppress duplicate warnings
+
+[ ] Move generated images to organized folder
+    Current: output_image_edit_plus_r128.png saved in project root
+    Proposed: ./generated-images/ or ./output/
+    Benefit: Keep project root clean, organize outputs by timestamp/prompt
+
+[ ] Handle torch_dtype deprecation warning
+    Warning: "`torch_dtype` is deprecated! Use `dtype` instead!"
+    Fix: Update code to use `dtype` parameter instead of `torch_dtype`
+
+[ ] Suppress guidance_scale warning for non-guidance-distilled models
+    Warning: "guidance_scale is passed as 1.0, but ignored since the model is not guidance-distilled."
+    Fix: Either remove guidance_scale=1.0 or suppress this expected warning
+
+[ ] Handle unexpected config attributes warning
+    Warning: "The config attributes {'pooled_projection_dim': 768} were passed to NunchakuQwenImageTransformer2DModel, but are not expected"
+    Issue: Benign warning from model config mismatch
+    Fix: Update nunchaku model config or suppress this warning
+
+[ ] Add progress indicators/cleaner output
+    Current: Multiple progress bars and warnings intermixed
+    Improvement: Better organized output, maybe logging levels
+
+[ ] Add timestamp to generated image filenames
+    Current: output_image_edit_plus_r128.png (overwrites on re-run)
+    Proposed: output_20251002_085316_r128.png or similar
+
+[ ] MOVE GENERATED IMAGES TO DEDICATED FOLDER
+    Current: output_image_edit_plus_r128.png saved in project root
+    Proposed folder names:
+      - ./generated/ (simple)
+      - ./output/ (descriptive)
+      - ./generations/ (clear)
+    Benefits:
+      - Keeps project root clean
+      - Easy to find all outputs
+      - Can add to .gitignore
+      - Organize by date/prompt
+    Implementation:
+      - Create folder if not exists
+      - Save with timestamp: generated/20251002_085316_r128.png
+      - Optionally save prompt as metadata .txt file
+
+====================================
+Completed Tasks:
+====================================
+
+[✓] Set up virtual environment (.venv)
+[✓] Install PyTorch 2.5.1+cu121 with CUDA support
+[✓] Install diffusers 0.36.0.dev0 from GitHub
+[✓] Install Visual Studio Build Tools 2022 with C++ components
+[✓] Patch PyTorch to bypass CUDA version check (13.0 vs 12.1)
+[✓] Compile and install nunchaku from source with git submodules
+[✓] Verify nunchaku installation (NunchakuQwenImageTransformer2DModel)
+[✓] Successfully run qwen_image_edit_nunchaku.py
+[✓] Generated first image successfully (2:44 inference time, 40 steps)
+
+====================================
