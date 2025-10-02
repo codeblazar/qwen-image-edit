@@ -48,6 +48,67 @@ IMPROVEMENTS IDENTIFIED FROM OUTPUT:
       - Optionally save prompt as metadata .txt file
 
 ====================================
+SPEED OPTIMIZATION PLAN:
+====================================
+
+[ ] Implement Lightning 8-Step Model for 5x Speed Improvement
+    Current: Standard model, 40 steps, ~2:45 generation time
+    Target: Lightning model, 8 steps, ~33 seconds generation time
+    
+    CRITICAL LESSONS FROM PAST ERRORS:
+    ⚠️ ALWAYS activate venv first: .\.venv\Scripts\Activate.ps1
+    ⚠️ Check (.venv) appears in prompt before ANY command
+    ⚠️ Use correct quantized model (nunchaku-tech/...)
+    ⚠️ Never use wrong nunchaku package (0.15.4 stats)
+    
+    STEP-BY-STEP IMPLEMENTATION:
+    
+    1. Create new script: qwen_image_edit_lightning.py
+       - Copy from qwen_image_edit_nunchaku.py
+       - Change model path to: svdq-int4_r128-lightningv2.0-8steps
+       - Change num_inference_steps from 40 to 8
+       - Add "lightning" prefix to output filename
+       - Keep all other settings identical
+    
+    2. Test with venv active:
+       - cd C:\Projects\qwen-image-edit
+       - .\.venv\Scripts\Activate.ps1
+       - Verify (.venv) in prompt
+       - python qwen_image_edit_lightning.py
+    
+    3. Compare results:
+       - Time: Standard (~2:45) vs Lightning (~33s)
+       - Quality: Visual comparison of outputs
+       - VRAM usage: Should be similar (~23GB)
+    
+    4. Update documentation:
+       - Add lightning script to README
+       - Document speed vs quality tradeoff
+       - Update project structure
+    
+    5. Optional: Create 4-step ultra-fast variant
+       - Only if 8-step quality is acceptable
+       - Model: svdq-int4_r128-lightningv2.0-4steps
+       - Steps: 4 (10x faster, ~16 seconds)
+    
+    EXPECTED OUTCOMES:
+    ✅ 5x faster generation (2:45 → 33s)
+    ✅ Same VRAM usage (~23GB)
+    ✅ Same model size (~12.7GB)
+    ✅ Acceptable quality (rank 128)
+    ✅ Both scripts available (standard for quality, lightning for speed)
+    
+    VERIFICATION CHECKLIST:
+    [ ] New script created
+    [ ] Venv activated before test
+    [ ] Model downloads successfully
+    [ ] Generation completes without errors
+    [ ] Speed improvement measured
+    [ ] Quality acceptable
+    [ ] Documentation updated
+    [ ] Changes committed to git
+
+====================================
 Completed Tasks:
 ====================================
 

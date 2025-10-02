@@ -2,7 +2,17 @@
 
 ## Overview
 
-`qwen_instruction_edit.py` enables instruction-based image editing where you provide:
+Instruction-based image editing allows you to transform images with natural language instructions while preserving facial features.
+
+**🌟 Two Ways to Use:**
+1. **`qwen_gradio_ui.py`** - Interactive web interface (recommended for most users)
+2. **`qwen_instruction_edit.py`** - Command-line script (for automation/batch processing)
+
+This guide focuses on the CLI script. For the web UI, see [README.md](README.md).
+
+## CLI Script: `qwen_instruction_edit.py`
+
+The script enables editing where you provide:
 1. A seed image (person's face/pose)
 2. An instruction (e.g., "Make me into Superman")
 3. The model transforms the image while preserving facial features

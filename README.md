@@ -34,19 +34,26 @@ AI-powered multi-image editing using Qwen's Image Edit model with quantized tran
 
 ## 🎯 Overview
 
-This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality multi-image AI editing on consumer GPUs like the RTX 4090 (24GB VRAM).
+This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality AI image editing on consumer GPUs like the RTX 4090 (24GB VRAM).
 
-**Three scripts available:**
+**🌟 NEW: Gradio Web UI** - Interactive web interface for easy image editing!
+- `qwen_gradio_ui.py` - **Recommended!** Web interface with multi-model support
+
+**Command-line scripts:**
 - `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
 - `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
 - `qwen_image_edit_lightning_4step.py` - Lightning 4-step model (ultra-fast, ~10s)
+- `qwen_instruction_edit.py` - Instruction-based single-image editing
 
 ## ✨ Features
 
+- **🎨 Gradio Web UI**: Easy-to-use web interface with real-time preview
+- **Multi-Model Support**: Switch between 4-step, 8-step, and 40-step models on-the-fly
+- **Random Seeds**: Automatic random seed generation for variety
+- **Face Preservation**: Strong automatic face identity preservation
 - **Quantized Model Support**: Uses INT4 quantization (rank 128) to fit in 24GB VRAM
-- **Multi-Image Editing**: Combine and edit multiple images with AI guidance
 - **High Quality Output**: ~12.7GB quantized model maintains excellent quality
-- **Lightning Fast Option**: 8-step model generates in ~21 seconds (7.7x faster!)
+- **Lightning Fast Option**: 4-step model generates in ~10 seconds!
 - **CUDA-Optimized**: Built for NVIDIA GPUs with Compute Capability 8.9 (RTX 4090)
 
 ## 🖼️ Example
@@ -169,40 +176,67 @@ cd C:\Projects\qwen-image-edit
 
 # Verify you see (.venv) in your prompt
 # Prompt should show: (.venv) PS C:\Projects\qwen-image-edit>
-
-# Option 1: Standard model (best quality, slower)
-python qwen_image_edit_nunchaku.py
-
-# Option 2: Lightning 8-step model (fast, very good quality)
-python qwen_image_edit_lightning.py
-
-# Option 3: Lightning 4-step model (ultra-fast, good quality)
-python qwen_image_edit_lightning_4step.py
 ```
 
-The script will:
-1. Download the quantized model (~12.7GB) on first run
-2. Download sample images from Qwen examples
-3. Generate an edited image combining both inputs
-4. Save output to `generated-images/[output|lightning]_r128_YYYYMMDD_HHMMSS.png`
+### 🌟 Recommended: Gradio Web UI
+
+**Easy-to-use web interface with all features!**
+
+```powershell
+# Start the web UI
+python qwen_gradio_ui.py
+```
+
+Then open your browser to **http://127.0.0.1:7860**
+
+**Features:**
+- 🎨 Interactive web interface - no code editing needed
+- 🔄 Switch between 3 models (4-step, 8-step, 40-step) on-the-fly
+- 🎲 Random seeds for variety, or note seed for reproducibility
+- 📝 Instruction-based editing with system prompts
+- 🎭 Automatic face preservation
+- 💾 Clean filenames: `qwen04_0001.png`, `qwen08_0042.png`, `qwen40_0001.png`
+
+### Command-Line Options
+
+```powershell
+# Multi-image composition (Sydney Harbour example)
+python qwen_image_edit_nunchaku.py        # Standard 40-step (~2:45)
+python qwen_image_edit_lightning.py       # Lightning 8-step (~21s)
+python qwen_image_edit_lightning_4step.py # Lightning 4-step (~10s)
+
+# Single-image instruction editing
+python qwen_instruction_edit.py           # Edit script for custom instructions
+```
 
 **Generation Time**: 
-- Standard: ~2:45 (40 steps)
-- Lightning 8-step: ~21s ⚡ **7.7x faster!**
-- Lightning 4-step: ~10s ⚡⚡ **16x faster!**
+- 40-step: ~2:45 (best quality)
+- 8-step: ~21s ⚡ (7.7x faster, very good quality)
+- 4-step: ~10s ⚡⚡ (16x faster, good quality)
 
-**Output**: All generated images are saved in the `generated-images/` folder with timestamps:
-- Standard: `output_r128_YYYYMMDD_HHMMSS.png`
-- Lightning 8-step: `lightning_r128_YYYYMMDD_HHMMSS.png`
-- Lightning 4-step: `lightning4_r128_YYYYMMDD_HHMMSS.png`
+**Output Files:**
+- Gradio UI: `qwen04_0001.png`, `qwen08_0001.png`, `qwen40_0001.png` (sequential)
+- Command-line: Timestamped filenames in `generated-images/` folder
+
+**Output**: All generated images are saved in the `generated-images/` folder with sequential naming:
+- **Gradio UI**: `qwen04_0001.png`, `qwen08_0001.png`, `qwen40_0001.png` (sequential per model)
+- **CLI Scripts**: `output_r128_YYYYMMDD_HHMMSS.png` (timestamp-based for batch processing)
 
 ## 📊 Performance
 
+### Gradio UI (Single Image Editing)
+- **Lightning 4-step**: ~10 seconds/image (ultra-fast)
+- **Lightning 8-step**: ~20 seconds/image (fast)
+- **Standard 40-step**: ~2:45 minutes/image (best quality)
+
+### CLI Scripts (Multi-Image Composition)
 - **First Run**: ~5 minutes (model download + generation)
 - **Subsequent Runs**: ~2-3 minutes (generation only)
+- **Inference Steps**: 40 for standard, 8 or 4 for lightning
+
+### System Requirements
 - **VRAM Usage**: ~23GB during inference
-- **Model Download Size**: 12.7GB quantized model
-- **Inference Steps**: 40 (adjustable: 20-50)
+- **Model Download Size**: 12.7GB per quantized model
 
 ## 📁 Project Structure
 
@@ -210,13 +244,21 @@ The script will:
 qwen-image-edit/
 ├── .venv/                                    # Virtual environment (do not commit)
 ├── generated-images/                         # Generated images output folder
+│   ├── qwen04_0001.png                      # 4-step model outputs
+│   ├── qwen08_0001.png                      # 8-step model outputs
+│   └── qwen40_0001.png                      # 40-step model outputs
+├── qwen_gradio_ui.py                        # ⭐ WEB UI (Recommended!)
+├── qwen_instruction_edit.py                 # Instruction-based editing script
 ├── qwen_image_edit_nunchaku.py              # Standard 40-step (best quality)
 ├── qwen_image_edit_lightning.py             # Lightning 8-step (fast)
 ├── qwen_image_edit_lightning_4step.py       # Lightning 4-step (ultra-fast)
+├── system_prompt.txt.example                # System prompt examples
 ├── check.ps1                                 # Prerequisites checker
 ├── install-nunchaku-patched.ps1             # Installation helper
 ├── requirements.txt                          # Python dependencies
 ├── README.md                                 # This file
+├── NAMING_CONVENTION.md                      # File naming guide
+├── INSTRUCTION_EDITING.md                    # Instruction editing docs
 ├── TODO.txt                                  # TODO list and improvements
 └── .gitignore                                # Git ignore rules
 ```
