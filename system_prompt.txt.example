@@ -1,0 +1,38 @@
+# System Prompt Examples
+# Copy this file to system_prompt.txt and customize for your needs
+
+# Photo-realistic (default example)
+Create a photo-realistic, high-quality image with professional lighting and composition.
+
+# Anime Style
+Create in anime art style with vibrant colors and expressive features.
+
+# Studio Ghibli
+Create in Studio Ghibli animation style with soft colors, hand-drawn aesthetic, and whimsical atmosphere.
+
+# Professional Photography
+Professional studio photography, 8K resolution, perfect lighting, sharp focus, high detail.
+
+# Oil Painting
+Create as a classical oil painting with visible brushstrokes, rich colors, and artistic composition.
+
+# Cyberpunk
+Futuristic cyberpunk aesthetic with neon lights, high-tech elements, and dystopian atmosphere.
+
+# Vintage/Retro
+1970s vintage photography style with warm tones, slight grain, and nostalgic feel.
+
+# Fantasy Art
+Epic fantasy illustration with dramatic lighting, mystical atmosphere, and detailed textures.
+
+# Comic Book
+Comic book art style with bold lines, vibrant colors, and dynamic composition.
+
+# Realistic Portrait
+Professional portrait photography with natural lighting, shallow depth of field, and realistic skin tones.
+
+# USAGE INSTRUCTIONS
+# 1. Copy this file to system_prompt.txt
+# 2. Keep only the style you want (delete the rest)
+# 3. Edit/customize as needed
+# 4. The system prompt will be applied to ALL your instructions

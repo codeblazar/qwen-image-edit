@@ -22,6 +22,9 @@ generated-images/*.jpg
 generated-images/*.jpeg
 output/
 
+# User-specific configuration
+system_prompt.txt
+
 # Model Cache
 .cache/
 *.safetensors
