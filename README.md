@@ -1,5 +1,16 @@
-# Qwen Image Edit 2509
+# Qwen Image Edit 3. **❌ NOT USING VENV**: Do NOT install in system Python
+   - ✅ USE: Always activate `.venv` before running ANY command
+   - Check prompt shows `(.venv)` at the start
+   - If you see errors, you're probably not in the venv
 
+4. **❌ WRONG PARAMETERS**: Do NOT assume all models use the same parameters
+   - ✅ ALWAYS check the HuggingFace model card for optimal settings
+   - Lightning/Turbo/distilled models need different `true_cfg_scale` values
+   - **Example**: Standard models use `true_cfg_scale=4.0`, Lightning uses `1.0`
+   - Using wrong parameters = poor quality, blocky/pixelated output
+   - See "Model-Specific Parameters" section below
+
+## 🎯 Overview
 AI-powered multi-image editing using Qwen's Image Edit model with quantized transformers for 24GB VRAM GPUs.
 
 ## ⚠️ CRITICAL: READ THIS FIRST
@@ -25,11 +36,16 @@ AI-powered multi-image editing using Qwen's Image Edit model with quantized tran
 
 This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality multi-image AI editing on consumer GPUs like the RTX 4090 (24GB VRAM).
 
+**Two scripts available:**
+- `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
+- `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
+
 ## ✨ Features
 
 - **Quantized Model Support**: Uses INT4 quantization (rank 128) to fit in 24GB VRAM
 - **Multi-Image Editing**: Combine and edit multiple images with AI guidance
 - **High Quality Output**: ~12.7GB quantized model maintains excellent quality
+- **Lightning Fast Option**: 8-step model generates in ~21 seconds (7.7x faster!)
 - **CUDA-Optimized**: Built for NVIDIA GPUs with Compute Capability 8.9 (RTX 4090)
 
 ## 🖼️ Example
@@ -153,17 +169,22 @@ cd C:\Projects\qwen-image-edit
 # Verify you see (.venv) in your prompt
 # Prompt should show: (.venv) PS C:\Projects\qwen-image-edit>
 
-# Run image generation
+# Option 1: Standard model (best quality, slower)
 python qwen_image_edit_nunchaku.py
+
+# Option 2: Lightning model (fast, very good quality)
+python qwen_image_edit_lightning.py
 ```
 
 The script will:
 1. Download the quantized model (~12.7GB) on first run
 2. Download sample images from Qwen examples
 3. Generate an edited image combining both inputs
-4. Save output to `generated-images/output_r128_YYYYMMDD_HHMMSS.png`
+4. Save output to `generated-images/[output|lightning]_r128_YYYYMMDD_HHMMSS.png`
 
-**Generation Time**: ~2-3 minutes after model is downloaded
+**Generation Time**: 
+- Standard: ~2:45 (40 steps)
+- Lightning: ~21s (8 steps) ⚡ **7.7x faster!**
 
 **Output**: All generated images are saved in the `generated-images/` folder with timestamps to prevent overwriting.
 
@@ -209,6 +230,81 @@ qwen-image-edit/
 - `svdq-int4_r128-lightningv2.0-4steps` - Very fast + Better quality
 
 **Current script uses:** `nunchaku-tech/nunchaku-qwen-image-edit-2509/svdq-int4_r128`
+
+## 🎛️ Model-Specific Parameters
+
+**⚠️ CRITICAL: Different models require different parameters!**
+
+### Standard Models (40 steps)
+```python
+inputs = {
+    "num_inference_steps": 40,
+    "true_cfg_scale": 4.0,      # High guidance for standard models
+    "guidance_scale": 1.0,
+    "negative_prompt": " ",
+}
+```
+- **Quality**: Best
+- **Speed**: Slow (~2:45 for 40 steps)
+- **Use case**: Final production quality
+
+### Lightning Models (8 steps)
+```python
+inputs = {
+    "num_inference_steps": 8,
+    "true_cfg_scale": 1.0,       # ⚠️ DIFFERENT! Lightning uses 1.0
+    "guidance_scale": 1.0,
+    "negative_prompt": " ",
+}
+```
+- **Quality**: Very Good
+- **Speed**: Fast (~21 seconds for 8 steps)
+- **Use case**: Quick iterations, testing prompts
+
+### Lightning Models (4 steps)
+```python
+inputs = {
+    "num_inference_steps": 4,
+    "true_cfg_scale": 1.0,       # Same as 8-step
+    "guidance_scale": 1.0,
+    "negative_prompt": " ",
+}
+```
+- **Quality**: Good
+- **Speed**: Very Fast (~10 seconds for 4 steps)
+- **Use case**: Rapid prototyping
+
+### 🔍 How to Find Optimal Parameters
+
+**ALWAYS check the HuggingFace model card before using a new model!**
+
+1. **Visit the model repository:**
+   - Standard: https://huggingface.co/Qwen/Qwen-Image-Edit-2509
+   - Lightning: https://huggingface.co/lightx2v/Qwen-Image-Lightning
+   - Quantized: https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509
+
+2. **Look for example code:**
+   - Check the "Model card" tab
+   - Look for usage examples with `DiffusionPipeline` or similar
+   - Note the values for:
+     - `num_inference_steps`
+     - `true_cfg_scale` ⚠️ **Most important!**
+     - `guidance_scale`
+
+3. **Common mistakes:**
+   - ❌ Using `true_cfg_scale=4.0` with Lightning → Blocky, pixelated output
+   - ❌ Using wrong number of steps → Poor quality or wasted time
+   - ❌ Assuming all models use same parameters → Unpredictable results
+
+### 📋 Quick Reference Table
+
+| Model Type | Steps | true_cfg_scale | Time | Quality |
+|------------|-------|----------------|------|---------|
+| Standard r128 | 40 | 4.0 | ~2:45 | Best |
+| Lightning 8-step r128 | 8 | 1.0 | ~21s | Very Good |
+| Lightning 4-step r128 | 4 | 1.0 | ~10s | Good |
+| Standard r32 | 40 | 4.0 | ~2:00 | Good |
+| Lightning 8-step r32 | 8 | 1.0 | ~18s | Good |
 
 ### ❌ DO NOT USE: Full Model (Will Crash!)
 
@@ -387,6 +483,43 @@ Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
 # Select: "Desktop development with C++"
 # See INSTALL_NUNCHAKU.md for detailed instructions
 ```
+
+### ❌ Issue: Output image is blocky, pixelated, or low quality
+
+**Cause**: Using wrong parameters for the model type!
+
+**This happens when:**
+- Using `true_cfg_scale=4.0` with Lightning models (should be 1.0)
+- Using wrong number of inference steps
+- Not checking the HuggingFace model card for optimal parameters
+
+**Solution**:
+```powershell
+# 1. Check which model you're using
+Get-Content your_script.py | Select-String "lightning"
+
+# 2. If using Lightning model, check true_cfg_scale
+Get-Content your_script.py | Select-String "true_cfg_scale"
+
+# Should show:
+# Lightning models: true_cfg_scale: 1.0  ✅
+# Standard models:  true_cfg_scale: 4.0  ✅
+
+# 3. Fix your script if needed:
+# Lightning (8-step): true_cfg_scale=1.0, num_inference_steps=8
+# Lightning (4-step): true_cfg_scale=1.0, num_inference_steps=4
+# Standard (40-step): true_cfg_scale=4.0, num_inference_steps=40
+
+# 4. ALWAYS check HuggingFace model card for new models:
+#    https://huggingface.co/<model_name>
+#    Look for example code with optimal parameters
+```
+
+**Prevention**: Before using any new model variant:
+1. Visit the HuggingFace model page
+2. Check the README for usage examples
+3. Copy the exact parameters shown in examples
+4. See "Model-Specific Parameters" section above
 
 ### ❌ Issue: Wrong nunchaku package installed (0.15.4 stats package)
 
