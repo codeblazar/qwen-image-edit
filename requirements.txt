@@ -1,0 +1,29 @@
+# Core PyTorch with CUDA support
+torch==2.5.1+cu121
+torchvision==0.20.1+cu121
+torchaudio==2.5.1+cu121
+
+# Diffusers (install from GitHub for QwenImageEditPlusPipeline)
+# Install with: pip install git+https://github.com/huggingface/diffusers.git
+diffusers>=0.36.0
+
+# Transformers and acceleration
+transformers==4.56.2
+accelerate==1.10.1
+peft==0.17.1
+
+# Image processing
+pillow==11.3.0
+
+# Utilities
+requests==2.32.5
+einops==0.8.1
+protobuf==6.32.1
+sentencepiece==0.2.1
+
+# nunchaku - MUST be installed from source (see INSTALL_NUNCHAKU.md)
+# DO NOT use pip install nunchaku (that's a different stats package!)
+# nunchaku==1.0.1+torch2.5  # Installed from GitHub source
+
+# Optional: Faster HuggingFace downloads
+# hf_xet

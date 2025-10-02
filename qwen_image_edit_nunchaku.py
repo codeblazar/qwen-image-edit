@@ -4,8 +4,12 @@ from PIL import Image
 from diffusers import QwenImageEditPlusPipeline
 from io import BytesIO
 import requests
+from datetime import datetime
 from nunchaku import NunchakuQwenImageTransformer2DModel
 from nunchaku.utils import get_gpu_memory, get_precision
+
+# Create output directory if it doesn't exist
+os.makedirs("generated-images", exist_ok=True)
 
 # Use rank 128 for best quality (will fit on RTX 4090 24GB VRAM)
 rank = 128
@@ -70,6 +74,9 @@ print(f"Inference steps: {inputs['num_inference_steps']}")
 with torch.inference_mode():
     output = pipeline(**inputs)
     output_image = output.images[0]
-    output_path = f"output_image_edit_plus_r{rank}.png"
+    
+    # Save with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_path = f"generated-images/output_r{rank}_{timestamp}.png"
     output_image.save(output_path)
     print(f"\nSuccess! Image saved at: {os.path.abspath(output_path)}")

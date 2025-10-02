@@ -17,7 +17,9 @@ env/
 
 # Generated Images
 output_image_edit_plus_*.png
-generated-images/
+generated-images/*.png
+generated-images/*.jpg
+generated-images/*.jpeg
 output/
 
 # Model Cache

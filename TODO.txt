@@ -14,10 +14,10 @@ IMPROVEMENTS IDENTIFIED FROM OUTPUT:
     Currently: Same warning printed 8+ times
     Solution: Either install hf_xet or suppress duplicate warnings
 
-[ ] Move generated images to organized folder
-    Current: output_image_edit_plus_r128.png saved in project root
-    Proposed: ./generated-images/ or ./output/
-    Benefit: Keep project root clean, organize outputs by timestamp/prompt
+[✓] Move generated images to organized folder
+    COMPLETED: generated-images/ folder created
+    Format: generated-images/output_r128_YYYYMMDD_HHMMSS.png
+    Benefit: Project root clean, outputs organized by timestamp
 
 [ ] Handle torch_dtype deprecation warning
     Warning: "`torch_dtype` is deprecated! Use `dtype` instead!"
@@ -36,18 +36,9 @@ IMPROVEMENTS IDENTIFIED FROM OUTPUT:
     Current: Multiple progress bars and warnings intermixed
     Improvement: Better organized output, maybe logging levels
 
-[ ] Add timestamp to generated image filenames
-    Current: output_image_edit_plus_r128.png (overwrites on re-run)
-    Proposed: output_20251002_085316_r128.png or similar
-
-[ ] MOVE GENERATED IMAGES TO DEDICATED FOLDER
-    Current: output_image_edit_plus_r128.png saved in project root
-    Proposed folder names:
-      - ./generated/ (simple)
-      - ./output/ (descriptive)
-      - ./generations/ (clear)
-    Benefits:
-      - Keeps project root clean
+[✓] Add timestamp to generated image filenames
+    COMPLETED: Now uses format output_r128_20251002_085316.png
+    Benefit: Never overwrites previous generations
       - Easy to find all outputs
       - Can add to .gitignore
       - Organize by date/prompt

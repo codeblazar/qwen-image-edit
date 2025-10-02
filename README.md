@@ -2,6 +2,25 @@
 
 AI-powered multi-image editing using Qwen's Image Edit model with quantized transformers for 24GB VRAM GPUs.
 
+## ⚠️ CRITICAL: READ THIS FIRST
+
+### 🚫 Three Common Mistakes That Will Waste Hours
+
+1. **❌ WRONG MODEL**: Do NOT use `Qwen/Qwen-Image-Edit-2509` (40GB full model)
+   - ✅ USE: `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)
+   - The 40GB model **WILL NOT FIT** on RTX 4090 24GB VRAM
+   - You will get OOM (Out of Memory) errors
+
+2. **❌ WRONG NUNCHAKU**: Do NOT use `pip install nunchaku` (0.15.4 stats package)
+   - ✅ USE: Install from source (see below)
+   - The PyPI package "nunchaku" is a completely different stats library
+   - You need `nunchaku==1.0.1+torch2.5` for AI model quantization
+
+3. **❌ NOT USING VENV**: Do NOT install in system Python
+   - ✅ ALWAYS activate `.venv` before running ANY command
+   - Check prompt shows `(.venv)` at the start
+   - If you see errors, you're probably not in the venv
+
 ## 🎯 Overview
 
 This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality multi-image AI editing on consumer GPUs like the RTX 4090 (24GB VRAM).
@@ -38,23 +57,101 @@ This project implements the Qwen Image Edit 2509 model using quantized INT4 tran
 - **Driver**: 581.29 or newer
 - **Visual Studio Build Tools 2022**: With C++ components
 
-## ✅ Installation Status
+## 📦 Installation
 
-### Completed:
-1. ✅ Virtual environment created (`.venv`)
-2. ✅ PyTorch 2.5.1+cu121 installed with CUDA support
-3. ✅ diffusers 0.36.0.dev0 (from GitHub) installed
-4. ✅ All dependencies installed (transformers, accelerate, pillow, requests, peft, einops, protobuf, sentencepiece)
-5. ✅ Visual Studio Build Tools 2022 installed with C++ components
-6. ✅ PyTorch patched to bypass CUDA version check (13.0 vs 12.1)
-7. ✅ nunchaku compiled and installed from source
-8. ✅ Successfully generated first image!
+### Step 1: Create Virtual Environment
+
+**⚠️ CRITICAL: You MUST use a virtual environment!**
+
+```powershell
+# Navigate to project directory
+cd C:\Projects\qwen-image-edit
+
+# Create virtual environment
+python -m venv .venv
+
+# Activate it (DO THIS EVERY TIME)
+.\.venv\Scripts\Activate.ps1
+
+# Verify activation - you should see (.venv) in your prompt
+# Your prompt should look like: (.venv) PS C:\Projects\qwen-image-edit>
+```
+
+### Step 2: Install PyTorch with CUDA
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+```
+
+### Step 3: Install Diffusers from GitHub
+
+**⚠️ Must be from GitHub for QwenImageEditPlusPipeline support**
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+pip install git+https://github.com/huggingface/diffusers.git
+```
+
+### Step 4: Install Other Dependencies
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+pip install -r requirements.txt
+```
+
+### Step 5: Install nunchaku from Source
+
+**⚠️ DO NOT use `pip install nunchaku` - that's a different package!**
+
+See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for complete instructions.
+
+**Quick version:**
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+
+# Install Visual Studio Build Tools 2022 first (if not already installed)
+# Download from: https://visualstudio.microsoft.com/downloads/
+
+# Clone and build nunchaku
+cd $env:TEMP
+git clone https://github.com/nunchaku-tech/nunchaku.git
+cd nunchaku
+git submodule update --init --recursive
+$env:TORCH_CUDA_ARCH_LIST="8.9"
+$env:DISTUTILS_USE_SDK="1"
+pip install -e . --no-build-isolation
+
+# Return to project
+cd C:\Projects\qwen-image-edit
+```
+
+**Verify nunchaku installation:**
+```powershell
+# Should show: nunchaku==1.0.1+torch2.5 (NOT 0.15.4!)
+pip show nunchaku
+```
+
+### Step 6: Run Prerequisites Check
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+.\check.ps1
+```
 
 ## 🚀 Quick Start
 
+**⚠️ ALWAYS activate venv first!**
+
 ```powershell
-# Activate virtual environment
+# Navigate to project
+cd C:\Projects\qwen-image-edit
+
+# Activate virtual environment (DO THIS EVERY TIME!)
 .\.venv\Scripts\Activate.ps1
+
+# Verify you see (.venv) in your prompt
+# Prompt should show: (.venv) PS C:\Projects\qwen-image-edit>
 
 # Run image generation
 python qwen_image_edit_nunchaku.py
@@ -64,9 +161,11 @@ The script will:
 1. Download the quantized model (~12.7GB) on first run
 2. Download sample images from Qwen examples
 3. Generate an edited image combining both inputs
-4. Save output to `output_image_edit_plus_r128.png`
+4. Save output to `generated-images/output_r128_YYYYMMDD_HHMMSS.png`
 
 **Generation Time**: ~2-3 minutes after model is downloaded
+
+**Output**: All generated images are saved in the `generated-images/` folder with timestamps to prevent overwriting.
 
 ## 📊 Performance
 
@@ -81,43 +180,119 @@ The script will:
 ```
 qwen-image-edit/
 ├── .venv/                          # Virtual environment (do not commit)
+├── generated-images/               # Generated images output folder
 ├── qwen_image_edit_nunchaku.py    # Main script
 ├── check.ps1                       # Prerequisites checker
 ├── install-nunchaku-patched.ps1   # Installation helper
+├── requirements.txt                # Python dependencies
 ├── README.md                       # This file
 ├── TODO.txt                        # TODO list and improvements
-├── .gitignore                      # Git ignore rules
-└── output_image_edit_plus_*.png   # Generated images
+└── .gitignore                      # Git ignore rules
 ```
 
 ## 🔧 Model Options
 
-### ✅ Quantized Models (Recommended - Fits on RTX 4090)
+### ✅ Quantized Models (THE ONLY MODELS THAT WORK on RTX 4090)
+
+**⚠️ IMPORTANT: Only use models from `nunchaku-tech/nunchaku-qwen-image-edit-2509`**
 
 **Standard Models (40 steps):**
-- `svdq-int4_r32` (11.5 GB)
-- `svdq-int4_r128` (12.7 GB) ⭐ **Best Quality** (currently used)
+- `svdq-int4_r32` (11.5 GB) - Good quality
+- `svdq-int4_r128` (12.7 GB) ⭐ **Best Quality** ← **WE USE THIS ONE**
 
 **Lightning Models (8 steps - Faster):**
-- `svdq-int4_r32-lightningv2.0-8steps`
-- `svdq-int4_r128-lightningv2.0-8steps` ⭐ **Best Balance**
+- `svdq-int4_r32-lightningv2.0-8steps` - Fast
+- `svdq-int4_r128-lightningv2.0-8steps` ⭐ **Best Balance** - Fast + Quality
 
 **Lightning Models (4 steps - Fastest):**
-- `svdq-int4_r32-lightningv2.0-4steps`
-- `svdq-int4_r128-lightningv2.0-4steps`
+- `svdq-int4_r32-lightningv2.0-4steps` - Very fast
+- `svdq-int4_r128-lightningv2.0-4steps` - Very fast + Better quality
 
-All models from: `nunchaku-tech/nunchaku-qwen-image-edit-2509`
+**Current script uses:** `nunchaku-tech/nunchaku-qwen-image-edit-2509/svdq-int4_r128`
 
-### ❌ Full Model (Not Compatible)
-- `Qwen/Qwen-Image-Edit-2509` (~40GB)
-- **Does NOT fit on RTX 4090 24GB VRAM**
-- Causes OOM errors
+### ❌ DO NOT USE: Full Model (Will Crash!)
 
-## 🛠️ Installation (Detailed)
+**🚫 `Qwen/Qwen-Image-Edit-2509` (~40GB) - DO NOT USE!**
 
-See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for complete installation instructions including:
+This is the WRONG model. It will:
+- ❌ Cause OOM (Out of Memory) errors
+- ❌ Crash your system
+- ❌ NOT fit on RTX 4090 24GB VRAM
+- ❌ Waste hours of your time downloading it
+
+**IF YOU SEE THIS IN YOUR CODE, YOU'RE USING THE WRONG MODEL:**
+```python
+# ❌ WRONG - DO NOT USE
+pipeline = QwenImageEditPlusPipeline.from_pretrained("Qwen/Qwen-Image-Edit-2509")
+```
+
+**✅ CORRECT - USE THIS:**
+```python
+# ✅ CORRECT - Load quantized transformer first
+transformer = NunchakuQwenImageTransformer2DModel.from_pretrained(
+    "nunchaku-tech/nunchaku-qwen-image-edit-2509/svdq-int4_r128-qwen-image-edit-2509.safetensors"
+)
+pipeline = QwenImageEditPlusPipeline.from_pretrained(
+    "Qwen/Qwen-Image-Edit-2509",  # Pipeline config only
+    transformer=transformer  # Use quantized transformer
+)
+```
+
+## � How to Verify Everything is Correct
+
+### ✅ Check 1: Virtual Environment is Active
+
+```powershell
+# Your prompt should look like this:
+# (.venv) PS C:\Projects\qwen-image-edit>
+
+# If it doesn't, activate venv:
+.\.venv\Scripts\Activate.ps1
+```
+
+### ✅ Check 2: Correct nunchaku Version
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+pip show nunchaku
+
+# Should show:
+# Name: nunchaku
+# Version: 1.0.1+torch2.5
+# Location: C:\Users\...\AppData\Local\Temp\nunchaku
+
+# ❌ If it shows Version: 0.15.4 - YOU HAVE THE WRONG PACKAGE!
+# Fix: pip uninstall nunchaku -y
+# Then follow nunchaku installation steps above
+```
+
+### ✅ Check 3: Correct Model in Code
+
+```powershell
+# Check your script uses quantized models
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
+
+# Should show:
+# "nunchaku-tech/nunchaku-qwen-image-edit-2509/svdq-..."
+
+# ❌ If it shows only "Qwen/Qwen-Image-Edit-2509" without nunchaku-tech
+# YOU'RE USING THE WRONG 40GB MODEL!
+```
+
+### ✅ Check 4: All Dependencies Installed
+
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+.\check.ps1
+
+# Should show all ✓ checks passing
+```
+
+## 🛠️ Detailed Installation Guide
+
+See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for complete step-by-step instructions including:
 - Visual Studio Build Tools setup
-- PyTorch CUDA patch
+- PyTorch CUDA patch (if needed)
 - Nunchaku compilation from source
 - Troubleshooting common issues
 
@@ -151,22 +326,156 @@ This project uses models and libraries with their respective licenses. Please ch
 
 Contributions welcome! Please see [TODO.txt](TODO.txt) for current improvement ideas.
 
+### For Developers: Check for Absolute Paths
+
+Before committing changes, ensure no absolute paths exist:
+
+```powershell
+# Check all Python and PowerShell files for absolute paths
+Get-ChildItem -Recurse -Include *.py,*.ps1,*.md | Select-String -Pattern "C:\\"
+```
+
 ## 🐛 Troubleshooting
 
-### Issue: "ModuleNotFoundError: No module named 'nunchaku'"
-**Solution**: Make sure you're in the virtual environment and nunchaku is installed.
+### ❌ Issue: "ModuleNotFoundError: No module named 'nunchaku'"
 
-### Issue: "CUDA out of memory"
-**Solution**: The model requires 24GB VRAM. Close other applications using GPU.
+**Cause**: One of two problems:
+1. Not in virtual environment
+2. Wrong nunchaku installed (stats package)
 
-### Issue: Compilation fails during nunchaku installation
-**Solution**: Ensure Visual Studio Build Tools 2022 with C++ components is installed. See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md).
-
-### Issue: Wrong nunchaku package installed (stats package)
-**Solution**: Uninstall the stats package and install from GitHub:
+**Solution**:
 ```powershell
+# 1. Activate venv (look for (.venv) in prompt)
+.\.venv\Scripts\Activate.ps1
+
+# 2. Check nunchaku version
+pip show nunchaku
+
+# If version is 0.15.4 - WRONG PACKAGE!
 pip uninstall nunchaku -y
-# Follow installation instructions in INSTALL_NUNCHAKU.md
+
+# Install correct nunchaku from source
+# See INSTALL_NUNCHAKU.md for full instructions
+```
+
+### ❌ Issue: "CUDA out of memory"
+
+**Cause**: One of three problems:
+1. Using wrong 40GB full model
+2. Not enough VRAM
+3. Other apps using GPU
+
+**Solution**:
+```powershell
+# 1. Check you're using quantized model
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
+# Should show: nunchaku-tech/nunchaku-qwen-image-edit-2509
+
+# 2. Close other GPU applications
+# - Close Chrome/Edge (uses GPU)
+# - Close other AI apps
+# - Check GPU usage: nvidia-smi
+
+# 3. If still failing, you may be using the wrong 40GB model!
+```
+
+### ❌ Issue: Compilation fails during nunchaku installation
+
+**Solution**: Install Visual Studio Build Tools 2022 with C++ components
+```powershell
+# Download from: https://visualstudio.microsoft.com/downloads/
+# Select: "Desktop development with C++"
+# See INSTALL_NUNCHAKU.md for detailed instructions
+```
+
+### ❌ Issue: Wrong nunchaku package installed (0.15.4 stats package)
+
+**This is the #1 most common mistake!**
+
+**Solution**:
+```powershell
+# MAKE SURE (.venv) is showing in your prompt!
+
+# Remove wrong package
+pip uninstall nunchaku -y
+
+# Install correct version from source
+# See INSTALL_NUNCHAKU.md for full instructions
+cd $env:TEMP
+git clone https://github.com/nunchaku-tech/nunchaku.git
+cd nunchaku
+git submodule update --init --recursive
+pip install -e . --no-build-isolation
+```
+
+### ❌ Issue: Script runs but generates garbage/black images
+
+**Cause**: Probably using wrong 40GB model or wrong nunchaku
+
+**Solution**:
+```powershell
+# Verify BOTH are correct:
+
+# 1. Check nunchaku version (should be 1.0.1+torch2.5)
+pip show nunchaku
+
+# 2. Check model in code (should have nunchaku-tech)
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
+```
+
+### ❌ Issue: Commands fail with "python: command not found"
+
+**Cause**: Not in virtual environment
+
+**Solution**:
+```powershell
+# Activate venv - look for (.venv) in prompt
+.\.venv\Scripts\Activate.ps1
+
+# Verify activation worked
+python --version
+# Should show: Python 3.10.6
+```
+
+---
+
+## 🎯 Final Pre-Flight Checklist
+
+**Before running the script, verify ALL of these:**
+
+- [ ] ✅ Prompt shows `(.venv)` at the start
+- [ ] ✅ `pip show nunchaku` shows version `1.0.1+torch2.5` (NOT 0.15.4)
+- [ ] ✅ `Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"` shows quantized model path
+- [ ] ✅ `.\check.ps1` passes all checks
+- [ ] ✅ `nvidia-smi` shows RTX 4090 with 24GB VRAM available
+- [ ] ✅ You have ~50GB free disk space for model downloads
+- [ ] ✅ No other applications are using significant GPU memory
+
+**If ANY of these are ❌, fix them first before running the script!**
+
+---
+
+## 📚 Quick Reference
+
+**Activate venv (do this EVERY time):**
+```powershell
+cd C:\Projects\qwen-image-edit
+.\.venv\Scripts\Activate.ps1
+```
+
+**Run script:**
+```powershell
+python qwen_image_edit_nunchaku.py
+```
+
+**Check nunchaku version:**
+```powershell
+pip show nunchaku  # Should be 1.0.1+torch2.5
+```
+
+**Verify model in code:**
+```powershell
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
 ```
 
 ---
