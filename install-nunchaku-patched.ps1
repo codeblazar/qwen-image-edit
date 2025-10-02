@@ -73,13 +73,47 @@ $env:DISTUTILS_USE_SDK = "1"
 Write-Host "[OK] TORCH_CUDA_ARCH_LIST = 8.9 (sm_89)" -ForegroundColor Green
 Write-Host "[OK] DISTUTILS_USE_SDK = 1" -ForegroundColor Green
 
-# Step 4: Install nunchaku
-Write-Host "`nStep 4: Installing nunchaku from source..." -ForegroundColor Yellow
+# Step 4: Clone and install nunchaku from source
+Write-Host "`nStep 4: Cloning nunchaku repository..." -ForegroundColor Yellow
+$tempDir = $env:TEMP
+$nunchakuDir = Join-Path $tempDir "nunchaku"
+
+# Remove old clone if exists
+if (Test-Path $nunchakuDir) {
+    Write-Host "Removing old nunchaku directory..." -ForegroundColor Gray
+    Remove-Item -Recurse -Force $nunchakuDir
+}
+
+# Clone repository
+Write-Host "Cloning from GitHub..." -ForegroundColor Yellow
+git clone https://github.com/nunchaku-tech/nunchaku.git $nunchakuDir
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Failed to clone repository!" -ForegroundColor Red
+    exit 1
+}
+
+# Initialize submodules (CRITICAL - missing spdlog headers without this!)
+Write-Host "`nStep 5: Initializing git submodules..." -ForegroundColor Yellow
+Push-Location $nunchakuDir
+git submodule update --init --recursive
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Failed to initialize submodules!" -ForegroundColor Red
+    Pop-Location
+    exit 1
+}
+Write-Host "[OK] Submodules initialized" -ForegroundColor Green
+
+# Install from local directory
+Write-Host "`nStep 6: Installing nunchaku from source..." -ForegroundColor Yellow
 Write-Host "This will take 10-15 minutes. Please be patient...`n" -ForegroundColor Yellow
 
-pip install --no-build-isolation git+https://github.com/nunchaku-tech/nunchaku.git
+pip install -e . --no-build-isolation
+$installResult = $LASTEXITCODE
+Pop-Location
 
-if ($LASTEXITCODE -eq 0) {
+if ($installResult -eq 0) {
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "  Installation Successful!" -ForegroundColor Green
     Write-Host "========================================`n" -ForegroundColor Cyan
