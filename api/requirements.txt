@@ -1,0 +1,7 @@
+# FastAPI API Sub-Project Dependencies
+# Install these in addition to the main project dependencies
+# Compatible with Gradio 5.48.0
+
+fastapi>=0.115.2
+uvicorn[standard]>=0.31.0
+python-multipart>=0.0.18

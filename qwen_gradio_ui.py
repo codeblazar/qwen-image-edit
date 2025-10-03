@@ -113,8 +113,8 @@ def get_next_image_number(model_prefix):
     Get the next sequential number for the given model prefix
     Returns the next available number based on existing files
     """
-    # Find all files matching the pattern
-    pattern = f"generated-images/{model_prefix}_*.png"
+    # Find all files matching the pattern with -gui suffix
+    pattern = f"generated-images/{model_prefix}-gui_*.png"
     existing_files = glob.glob(pattern)
     
     if not existing_files:
@@ -124,13 +124,13 @@ def get_next_image_number(model_prefix):
     numbers = []
     for filepath in existing_files:
         filename = os.path.basename(filepath)
-        # Extract number from pattern like "qwen04_0001.png"
-        parts = filename.replace(".png", "").split("_")
-        if len(parts) >= 2:
-            try:
-                numbers.append(int(parts[-1]))
-            except ValueError:
-                continue
+        # Extract number from pattern like "qwen04-gui_001.png"
+        try:
+            # Split on '-gui_' to get the number part
+            num = int(filename.replace(".png", "").split("-gui_")[1])
+            numbers.append(num)
+        except (IndexError, ValueError):
+            continue
     
     # Return next number
     return max(numbers) + 1 if numbers else 1
@@ -239,8 +239,8 @@ def generate_image(
         # Get next sequential number for this model
         image_number = get_next_image_number(model_prefix)
         
-        # Save with simple sequential naming: qwen04_0001.png, qwen08_0042.png, etc.
-        output_path = f"generated-images/{model_prefix}_{image_number:04d}.png"
+        # Save with GUI naming scheme: qwen04-gui_001.png, qwen08-gui_042.png, etc.
+        output_path = f"generated-images/{model_prefix}-gui_{image_number:03d}.png"
         output_image.save(output_path)
         
         progress(1.0, desc="Complete!")

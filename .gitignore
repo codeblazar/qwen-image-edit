@@ -20,10 +20,15 @@ output_image_edit_plus_*.png
 generated-images/*.png
 generated-images/*.jpg
 generated-images/*.jpeg
+generated-images/api/*.png
+generated-images/api/*.jpg
 output/
 
 # User-specific configuration
 system_prompt.txt
+
+# API Configuration
+api/.env
 
 # Model Cache
 .cache/
