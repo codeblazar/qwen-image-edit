@@ -1,6 +1,13 @@
 # Qwen Image Edit API - Key Management
 # Stores and rotates the API key with history tracking
 
+param(
+    [switch]$Generate,
+    [switch]$Show,
+    [switch]$Rotate,
+    [switch]$History
+)
+
 $keyFile = "$PSScriptRoot\.api_key"
 $historyFile = "$PSScriptRoot\.api_key_history"
 
@@ -13,7 +20,8 @@ function Get-StoredApiKey {
 
 function Set-StoredApiKey {
     param([string]$key)
-    $key | Out-File $keyFile -NoNewline -Encoding UTF8
+    # Use ASCII encoding to avoid UTF-8 BOM issues
+    $key | Out-File $keyFile -NoNewline -Encoding ascii
     Write-Host "API key saved to: $keyFile" -ForegroundColor Green
     
     # Add to history
@@ -28,7 +36,8 @@ function Add-KeyToHistory {
     
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     $entry = "$timestamp | $action | $key"
-    Add-Content -Path $historyFile -Value $entry -Encoding UTF8
+    # Use ASCII encoding to avoid UTF-8 BOM issues
+    Add-Content -Path $historyFile -Value $entry -Encoding ascii
 }
 
 function Show-KeyHistory {
@@ -39,7 +48,7 @@ function Show-KeyHistory {
     
     Write-Host ""
     Write-Host "API Key History:" -ForegroundColor Cyan
-    Write-Host "=" * 100 -ForegroundColor Gray
+    Write-Host ("=" * 100) -ForegroundColor Gray
     Write-Host ""
     
     $entries = Get-Content $historyFile
@@ -61,7 +70,7 @@ function Show-KeyHistory {
     }
     
     Write-Host ""
-    Write-Host "=" * 100 -ForegroundColor Gray
+    Write-Host ("=" * 100) -ForegroundColor Gray
     
     # Show current active key
     $currentKey = Get-StoredApiKey
@@ -111,14 +120,7 @@ function Rotate-ApiKey {
     Write-Host "Restart the API server for the change to take effect." -ForegroundColor Yellow
 }
 
-# Main script
-param(
-    [switch]$Generate,
-    [switch]$Show,
-    [switch]$Rotate,
-    [switch]$History
-)
-
+# Main script logic
 if ($Generate) {
     Write-Host "Generating new API key..." -ForegroundColor Cyan
     $key = New-ApiKey

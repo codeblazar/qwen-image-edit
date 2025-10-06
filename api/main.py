@@ -117,6 +117,7 @@ def load_api_key():
     return "changeme-insecure-default-key"
 
 API_KEY = load_api_key()
+print(f"🔑 API Server loaded key: {API_KEY[:20]}...{API_KEY[-8:]}")
 
 # API Key Authentication
 async def verify_api_key(x_api_key: str = Header(..., description="API Key for authentication")):
@@ -262,7 +263,7 @@ async def load_model(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/api/v1/models", tags=["Models"])
+@app.get("/api/v1/models", tags=["Models"], dependencies=[Depends(verify_api_key)])
 async def list_models():
     """
     List all available models with specifications

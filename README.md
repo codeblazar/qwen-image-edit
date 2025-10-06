@@ -39,6 +39,13 @@ This project implements the Qwen Image Edit 2509 model using quantized INT4 tran
 **🌟 NEW: Gradio Web UI** - Interactive web interface for easy image editing!
 - `qwen_gradio_ui.py` - **Recommended!** Web interface with multi-model support
 
+**🚀 NEW: REST API** - Production-ready FastAPI server with queue management!
+- See [`api/README.md`](api/README.md) for complete API documentation
+- Job queue system with concurrent processing
+- Comprehensive test suite (14 tests, 100% coverage)
+- API key authentication with automatic management
+- Cloudflare Tunnel ready for remote access
+
 **Command-line scripts:**
 - `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
 - `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
@@ -48,6 +55,7 @@ This project implements the Qwen Image Edit 2509 model using quantized INT4 tran
 ## ✨ Features
 
 - **🎨 Gradio Web UI**: Easy-to-use web interface with real-time preview
+- **🚀 REST API**: Production-ready FastAPI server with job queue (see [`api/README.md`](api/README.md))
 - **Multi-Model Support**: Switch between 4-step, 8-step, and 40-step models on-the-fly
 - **Random Seeds**: Automatic random seed generation for variety
 - **Face Preservation**: Strong automatic face identity preservation
@@ -55,6 +63,8 @@ This project implements the Qwen Image Edit 2509 model using quantized INT4 tran
 - **High Quality Output**: ~12.7GB quantized model maintains excellent quality
 - **Lightning Fast Option**: 4-step model generates in ~10 seconds!
 - **CUDA-Optimized**: Built for NVIDIA GPUs with Compute Capability 8.9 (RTX 4090)
+- **Queue Management**: API handles concurrent jobs with automatic queuing
+- **Comprehensive Testing**: 14-test suite validates all functionality
 
 ## 🖼️ Example
 
@@ -243,7 +253,21 @@ python qwen_instruction_edit.py           # Edit script for custom instructions
 ```
 qwen-image-edit/
 ├── .venv/                                    # Virtual environment (do not commit)
+├── api/                                      # REST API server
+│   ├── main.py                              # FastAPI application
+│   ├── models.py                            # Data models
+│   ├── pipeline_manager.py                 # Model & queue management
+│   ├── requirements.txt                     # API dependencies
+│   ├── README.md                            # API documentation
+│   ├── .api_key                             # Current API key (auto-generated)
+│   ├── .api_key_history                     # API key history
+│   ├── manage-key.ps1                       # Key management script
+│   ├── new-api-key.ps1                      # Generate new key
+│   └── show-api-key.ps1                     # Show current key
 ├── generated-images/                         # Generated images output folder
+│   ├── api/                                 # API-generated images
+│   │   ├── qwen04_0001.png                 # 4-step outputs
+│   │   └── qwen40_0001.png                 # 40-step outputs
 │   ├── qwen04_0001.png                      # 4-step model outputs
 │   ├── qwen08_0001.png                      # 8-step model outputs
 │   └── qwen40_0001.png                      # 40-step model outputs
@@ -252,6 +276,8 @@ qwen-image-edit/
 ├── qwen_image_edit_nunchaku.py              # Standard 40-step (best quality)
 ├── qwen_image_edit_lightning.py             # Lightning 8-step (fast)
 ├── qwen_image_edit_lightning_4step.py       # Lightning 4-step (ultra-fast)
+├── launch.ps1                                # Launcher for API/Gradio
+├── test-api-remote.ps1                       # Comprehensive API test suite
 ├── system_prompt.txt.example                # System prompt examples
 ├── check.ps1                                 # Prerequisites checker
 ├── install-nunchaku-patched.ps1             # Installation helper

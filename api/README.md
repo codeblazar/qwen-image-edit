@@ -177,43 +177,55 @@ The API uses **API Key authentication** to protect endpoints.
 
 ### Setting Up Your API Key
 
-**1. Generate a secure API key:**
+**The API automatically manages keys for you!**
+
+The first time you run `launch.ps1` and select option 1 (API Server), it will:
+1. Check if an API key exists in `.api_key`
+2. If not, automatically generate a secure one
+3. Display the key for you to use
+4. Store it with a timestamp in `.api_key_history`
+
+**Manual Key Management:**
+
 ```powershell
-python generate_api_key.py
+# Generate a new API key
+.\api\new-api-key.ps1
+
+# Show current API key
+.\api\show-api-key.ps1
+
+# Rotate to a new key (archives old one)
+.\api\manage-key.ps1 -Rotate
 ```
 
-**2. Set the API key (choose one method):**
+**Key Storage:**
+- Current key: `api/.api_key` (ASCII encoded to avoid UTF-8 BOM issues)
+- Key history: `api/.api_key_history` (timestamped archive of all keys)
 
-**Option A: Environment Variable (Recommended)**
-```powershell
-# Windows PowerShell
-$env:QWEN_API_KEY = "your-secure-key-here"
+### Key Security
 
-# Then start the server
-python main.py
-```
+✅ **Secure by default:** Each installation generates a unique 43-character key
+✅ **Automatic management:** No manual configuration needed
+✅ **History tracking:** All keys are archived with timestamps
+✅ **Easy rotation:** Use `manage-key.ps1 -Rotate` to change keys
 
-**Option B: Create .env file**
-```powershell
-# Copy example file
-copy .env.example .env
-
-# Edit .env and set your key
-# QWEN_API_KEY=your-secure-key-here
-```
+⚠️ **IMPORTANT:** Keep your `.api_key` file secure! Don't commit it to git (already in `.gitignore`).
 
 **3. Use the API key in requests:**
 
 Include the header `X-API-Key: your-key-here` in all requests to protected endpoints.
 
 ### Protected Endpoints
-- ✅ `POST /api/v1/edit` - Requires API key
-- ✅ `POST /api/v1/warmup` - Requires API key
+- ✅ `POST /api/v1/submit` - Submit image editing job (queued processing)
+- ✅ `GET /api/v1/status/{job_id}` - Get job status
+- ✅ `GET /api/v1/result/{job_id}` - Download result image
+- ✅ `POST /api/v1/load-model` - Load a specific model
+- ✅ `GET /api/v1/models` - List available models
 
 ### Public Endpoints (No API Key Required)
 - 🌐 `GET /` - API info
 - 🌐 `GET /api/v1/health` - Health check
-- 🌐 `GET /api/v1/models` - List models
+- 🌐 `GET /api/v1/queue` - Queue status
 
 ### Testing with API Key
 
@@ -321,6 +333,63 @@ Once the server is running, interactive documentation is available at:
 | Output Location | `generated-images/` | `generated-images/api/` |
 | Response | Display in browser | PNG in HTTP response |
 | Best For | Interactive testing | Automation, integrations |
+
+## 🧪 Testing
+
+### Comprehensive Test Suite
+
+The project includes a robust PowerShell test script that validates all API functionality:
+
+```powershell
+# Run against local server
+.\test-api-remote.ps1 -ApiKey "your-api-key" -BaseUrl "http://localhost:8000/api/v1"
+
+# Run against production (Cloudflare Tunnel)
+.\test-api-remote.ps1 -ApiKey "your-api-key" -BaseUrl "https://qwen.codeblazar.org/api/v1"
+```
+
+**Test Coverage (14 tests):**
+1. ✅ Health check endpoint
+2. ✅ Authentication rejection (invalid key)
+3. ✅ Model listing
+4. ✅ Queue status reporting
+5. ✅ Model loading
+6. ✅ Job submission
+7. ✅ Job status tracking
+8. ✅ Job completion and results
+9. ✅ Multiple concurrent jobs
+10. ✅ **Queue overflow protection** (fills queue to capacity)
+11. ✅ **Queue status under load** (metrics accuracy)
+12. ✅ **Queue position tracking** (job state transitions)
+13. ✅ Oversized image rejection
+14. ✅ Invalid job ID handling
+
+**Queue Testing:**
+The test suite includes comprehensive queue validation:
+- Fills queue to maximum capacity (10 jobs)
+- Verifies overflow handling and 429 responses
+- Checks queue metrics accuracy under load
+- Tracks job progression (queued → processing → completed)
+- Validates queue drainage and cleanup
+
+**Test Requirements:**
+- PowerShell 5.1 or later
+- API server running (local or remote)
+- Valid API key
+- Test image will be auto-generated
+
+**Expected Results:**
+```
+================================================================
+                       Test Summary
+================================================================
+Total Tests:  14
+Passed:       14
+Failed:       0
+Pass Rate:    100%
+
+ALL TESTS PASSED!
+```
 
 ## 📝 Example Use Cases
 
