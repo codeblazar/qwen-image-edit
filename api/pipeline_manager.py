@@ -9,6 +9,7 @@ from typing import Optional, Dict
 import random
 import time
 from datetime import datetime
+import asyncio
 
 
 class PipelineManager:
@@ -46,6 +47,14 @@ class PipelineManager:
         self.transformer: Optional[NunchakuQwenImageTransformer2DModel] = None
         self.current_model: Optional[str] = None
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        # Thread safety: prevent concurrent model loading/generation
+        self._model_lock = asyncio.Lock()
+        self._generation_lock = asyncio.Lock()
+        
+        # Track operation state
+        self.is_loading = False
+        self.is_generating = False
     
     def get_model_info(self, model_key: str) -> Dict:
         """Get information about a specific model"""
@@ -55,9 +64,10 @@ class PipelineManager:
         """List all available models"""
         return self.MODEL_CONFIGS
     
-    def load_model(self, model_key: str = "4-step") -> QwenImageEditPlusPipeline:
+    async def load_model(self, model_key: str = "4-step") -> QwenImageEditPlusPipeline:
         """
         Load the specified model. Caches the pipeline to avoid reloading.
+        Thread-safe with async lock.
         
         Args:
             model_key: One of "4-step", "8-step", "40-step"
@@ -65,10 +75,34 @@ class PipelineManager:
         Returns:
             Loaded pipeline
         """
-        if model_key not in self.MODEL_CONFIGS:
-            raise ValueError(f"Invalid model: {model_key}. Must be one of {list(self.MODEL_CONFIGS.keys())}")
+        async with self._model_lock:
+            if model_key not in self.MODEL_CONFIGS:
+                raise ValueError(f"Invalid model: {model_key}. Must be one of {list(self.MODEL_CONFIGS.keys())}")
+            
+            # Return cached pipeline if it's the same model
+            if self.current_model == model_key and self.pipeline is not None:
+                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Model '{model_key}' already loaded (using cache)")
+                return self.pipeline
+            
+            # Set loading state
+            self.is_loading = True
+            
+            try:
+                # Load new model
+                await self._load_model_internal(model_key)
+                return self.pipeline
+            finally:
+                self.is_loading = False
+    
+    async def _load_model_internal(self, model_key: str):
+        """Internal method to actually load the model (runs in executor to avoid blocking)"""
+        import asyncio
+        loop = asyncio.get_event_loop()
         
-        # Return cached pipeline if it's the same model
+        # Run the blocking model load in a thread pool
+        await loop.run_in_executor(None, self._load_model_sync, model_key)
+    
+    def _load_model_sync(self, model_key: str):
         if self.pipeline is not None and self.current_model == model_key:
             print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Using cached {model_key} model")
             return self.pipeline
@@ -145,7 +179,7 @@ class PipelineManager:
         self.current_model = model_key
         return self.pipeline
     
-    def generate_image(
+    async def generate_image(
         self,
         image,
         instruction: str,
@@ -154,7 +188,7 @@ class PipelineManager:
         system_prompt: Optional[str] = None
     ):
         """
-        Generate edited image
+        Generate edited image with concurrency protection
         
         Args:
             image: PIL Image object
@@ -164,17 +198,50 @@ class PipelineManager:
             system_prompt: Optional system prompt for styling
             
         Returns:
-            Generated PIL Image
+            Tuple of (Generated PIL Image, seed used)
+        """
+        async with self._generation_lock:
+            # Set generating state
+            self.is_generating = True
+            
+            try:
+                # Run generation in thread pool to avoid blocking
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(
+                    None,
+                    self._generate_image_sync,
+                    image,
+                    instruction,
+                    model_key,
+                    seed,
+                    system_prompt
+                )
+                return result
+            finally:
+                self.is_generating = False
+    
+    def _generate_image_sync(
+        self,
+        image,
+        instruction: str,
+        model_key: str,
+        seed: Optional[int],
+        system_prompt: Optional[str]
+    ):
+        """Synchronous image generation (called from thread pool)
+        
+        Returns:
+            Tuple of (Generated PIL Image, seed used)
         """
         print(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 🎨 Starting image generation...")
         generation_start = time.time()
         
-        # Load model if needed
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📥 Loading/checking model...")
-        model_load_start = time.time()
-        pipeline = self.load_model(model_key)
-        model_load_time = time.time() - model_load_start
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Model ready in {model_load_time:.2f}s")
+        # Load model if needed (this is synchronous, but should already be loaded)
+        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] 📥 Checking model...")
+        if self.pipeline is None or self.current_model != model_key:
+            raise RuntimeError(f"Model {model_key} not loaded. This should not happen - call load_model first.")
+        
+        pipeline = self.pipeline
         
         config = self.MODEL_CONFIGS[model_key]
         
@@ -229,7 +296,6 @@ class PipelineManager:
         
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ Inference completed in {inference_time:.2f}s")
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] ✅ TOTAL GENERATION TIME: {total_time:.2f}s")
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]    └─ Model load: {model_load_time:.2f}s")
         print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]    └─ Inference: {inference_time:.2f}s\n")
         
         return result.images[0], seed

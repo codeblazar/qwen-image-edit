@@ -113,8 +113,8 @@ def get_next_image_number(model_prefix):
     Get the next sequential number for the given model prefix
     Returns the next available number based on existing files
     """
-    # Find all files matching the pattern with -gui suffix
-    pattern = f"generated-images/{model_prefix}-gui_*.png"
+    # Find all files matching the pattern
+    pattern = f"generated-images/{model_prefix}_*.png"
     existing_files = glob.glob(pattern)
     
     if not existing_files:
@@ -124,13 +124,13 @@ def get_next_image_number(model_prefix):
     numbers = []
     for filepath in existing_files:
         filename = os.path.basename(filepath)
-        # Extract number from pattern like "qwen04-gui_001.png"
-        try:
-            # Split on '-gui_' to get the number part
-            num = int(filename.replace(".png", "").split("-gui_")[1])
-            numbers.append(num)
-        except (IndexError, ValueError):
-            continue
+        # Extract number from pattern like "qwen04_0001.png"
+        parts = filename.replace(".png", "").split("_")
+        if len(parts) >= 2:
+            try:
+                numbers.append(int(parts[-1]))
+            except ValueError:
+                continue
     
     # Return next number
     return max(numbers) + 1 if numbers else 1
@@ -163,6 +163,7 @@ def sanitize_text(text):
 
 def generate_image(
     seed_image,
+    reference_image,
     instruction,
     system_prompt,
     negative_prompt,
@@ -171,7 +172,7 @@ def generate_image(
     progress=gr.Progress()
 ):
     """
-    Generate instruction-based edited image
+    Generate instruction-based edited image with optional reference image
     """
     try:
         progress(0, desc="Preparing...")
@@ -181,6 +182,15 @@ def generate_image(
             return None, "❌ Please upload a seed image!"
         
         seed_img = Image.fromarray(seed_image).convert("RGB")
+        
+        # Prepare images list - add reference image if provided
+        images_list = [seed_img]
+        reference_note = ""
+        
+        if reference_image is not None:
+            ref_img = Image.fromarray(reference_image).convert("RGB")
+            images_list.append(ref_img)
+            reference_note = " Using reference image for pose/style/background guidance."
         
         # Sanitize text inputs to avoid issues with special characters
         instruction = sanitize_text(instruction)
@@ -211,7 +221,7 @@ def generate_image(
         
         # Prepare inputs with model-specific settings
         inputs = {
-            "image": [seed_img],
+            "image": images_list,  # Can be single image or [seed, reference]
             "prompt": full_prompt,
             "generator": torch.manual_seed(seed),
             "true_cfg_scale": config["true_cfg_scale"],
@@ -239,13 +249,13 @@ def generate_image(
         # Get next sequential number for this model
         image_number = get_next_image_number(model_prefix)
         
-        # Save with GUI naming scheme: qwen04-gui_001.png, qwen08-gui_042.png, etc.
-        output_path = f"generated-images/{model_prefix}-gui_{image_number:03d}.png"
+        # Save with simple sequential naming: qwen04_0001.png, qwen08_0042.png, etc.
+        output_path = f"generated-images/{model_prefix}_{image_number:04d}.png"
         output_image.save(output_path)
         
         progress(1.0, desc="Complete!")
         
-        info = f"""✅ **Generation Complete!**
+        info = f"""✅ **Generation Complete!**{reference_note}
         
 📁 **Saved to:** `{output_path}`
 🎨 **Model:** {model_choice}
@@ -293,9 +303,10 @@ with gr.Blocks(title="Qwen Instruction-Based Image Editing", theme=gr.themes.Sof
     
     **How to use:**
     1. Upload a seed image (photo of a person)
-    2. Write an instruction (what you want to transform)
-    3. Optionally add a system prompt (global style)
-    4. Click Generate!
+    2. Optionally upload a reference image (for pose, body shape, background, or items to combine)
+    3. Write an instruction (what you want to transform)
+    4. Optionally add a system prompt (global style)
+    5. Click Generate!
     """)
     
     with gr.Row():
@@ -303,9 +314,15 @@ with gr.Blocks(title="Qwen Instruction-Based Image Editing", theme=gr.themes.Sof
             gr.Markdown("### 📸 Input")
             
             seed_image = gr.Image(
-                label="Seed Image",
+                label="Seed Image (Main person/subject)",
                 type="numpy",
-                height=400
+                height=300
+            )
+            
+            reference_image = gr.Image(
+                label="Reference Image (Optional - for pose/body/background/items)",
+                type="numpy",
+                height=300
             )
             
             instruction = gr.Textbox(
@@ -386,7 +403,7 @@ with gr.Blocks(title="Qwen Instruction-Based Image Editing", theme=gr.themes.Sof
     # Connect the generate button
     generate_btn.click(
         fn=generate_image,
-        inputs=[seed_image, instruction, system_prompt, negative_prompt, model_choice, seed],
+        inputs=[seed_image, reference_image, instruction, system_prompt, negative_prompt, model_choice, seed],
         outputs=[output_image, output_info]
     )
     
@@ -398,6 +415,12 @@ with gr.Blocks(title="Qwen Instruction-Based Image Editing", theme=gr.themes.Sof
       - Lightning models (4/8-step): `true_cfg_scale=1.0` + strong face prompts
       - Standard model (40-step): `true_cfg_scale=4.0` + strong face prompts
       - If losing identity: Try clearer seed image or click 🎲 Randomize seed
+    - **Reference Image**: Upload a second image to use as reference for:
+      - **Pose**: "Match the pose from the reference image"
+      - **Body Shape**: "Use the body type from the reference image"
+      - **Background**: "Place in the background/scene from the reference image"
+      - **Items/Objects**: "Include the [item] from the reference image"
+      - **Combination**: "Combine elements from both images"
     - **Random Seeds**: Each generation uses a RANDOM seed by default for variety
       - Click 🎲 Randomize to get a new random seed
       - Note a specific seed number to recreate exact results later
@@ -413,8 +436,10 @@ with gr.Blocks(title="Qwen Instruction-Based Image Editing", theme=gr.themes.Sof
     
     - "Make me into Superman" → Costume transformation
     - "Transform into Studio Ghibli character" → Style transfer
+    - "Match the pose from the reference image" → Pose transfer
+    - "Place in the background from the reference image" → Background replacement
     - "Dress as 1940s detective" → Time period change
-    - "Place in cyberpunk city at night" → Environment change
+    - "Combine my face with the body pose from the reference image" → Pose + face combo
     
     ### ⚠️ Note
     

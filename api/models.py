@@ -3,6 +3,7 @@ Pydantic models for API request/response validation
 """
 from pydantic import BaseModel, Field
 from typing import Literal, Optional
+from datetime import datetime
 
 
 class ModelInfo(BaseModel):
@@ -33,7 +34,48 @@ class EditRequest(BaseModel):
 
 
 class HealthResponse(BaseModel):
-    """Health check response"""
+    """Health check response with operation state"""
     status: str
     current_model: Optional[str] = None
     model_loaded: bool
+    is_loading: bool = False
+    is_generating: bool = False
+    queue_max_size: Optional[int] = None
+    queue_cleanup_age_seconds: Optional[int] = None
+
+
+class JobSubmitResponse(BaseModel):
+    """Response when submitting a job to the queue"""
+    job_id: str
+    status: str = "queued"
+    position: int
+    message: str
+    estimated_wait_seconds: Optional[int] = None
+
+
+class JobStatusResponse(BaseModel):
+    """Response for job status query"""
+    job_id: str
+    status: str  # queued, processing, completed, failed
+    position: Optional[int] = None  # Only for queued jobs
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    result_path: Optional[str] = None
+    result_seed: Optional[int] = None
+    error: Optional[str] = None
+    instruction: str
+    model: Optional[str] = None
+
+
+class QueueStatusResponse(BaseModel):
+    """Response for queue status query"""
+    queue_size: int
+    max_queue_size: int
+    queued_count: int
+    processing_count: int
+    completed_count: int
+    failed_count: int
+    current_job_id: Optional[str] = None
+    total_jobs: int
+

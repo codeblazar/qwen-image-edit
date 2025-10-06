@@ -163,13 +163,13 @@ print(f"Saved to: {response.headers.get('X-Saved-Path')}")
 All API-generated images are saved to:
 ```
 generated-images/api/
-├── qwen04-api_001.png    # 4-step model outputs
-├── qwen04-api_002.png
-├── qwen08-api_001.png    # 8-step model outputs
-└── qwen40-api_001.png    # 40-step model outputs
+├── qwen04_0001.png    # 4-step model outputs
+├── qwen04_0002.png
+├── qwen08_0001.png    # 8-step model outputs
+└── qwen40_0001.png    # 40-step model outputs
 ```
 
-Files are numbered sequentially per model type with `-api` suffix to distinguish from Gradio UI outputs (`-gui`).
+Files are numbered sequentially per model type.
 
 ## 🔒 Authentication
 
