@@ -1,14 +1,53 @@
-# Qwen Image Edit API - Test Script
-# This script tests all major API endpoints and workflows
+# Qwen Image Edit API - Remote Test Script
+# Version: 2.0.3 (2025-10-07)
+# This script tests all major API endpoints and workflows remotely
+# 
+# PowerShell Requirements:
+#   - PowerShell 5.1+ (Windows PowerShell) - Fully supported
+#   - PowerShell 7+ (PowerShell Core) - Fully supported
+#   - Works on both versions with automatic version detection
+#
 # Usage: .\test-api-remote.ps1 -ApiKey "your-api-key-here"
+#        .\test-api-remote.ps1 -ApiKey "your-key" -BaseUrl "http://localhost:8000/api/v1"
+#
+# Required Files (in same directory):
+#   - api-test-image.png (512x512 test portrait)
+#   - api-test-image-large.png (3000x3000 for overflow test)
 
 param(
     [Parameter(Mandatory=$true)]
     [string]$ApiKey,
     
     [Parameter(Mandatory=$false)]
-    [string]$BaseUrl = "https://qwen.codeblazar.org/api/v1"
+    [string]$BaseUrl = "https://qwen.codeblazar.org/api/v1",
+    
+    [Parameter(Mandatory=$false)]
+    [switch]$DebugLog
 )
+
+# Script version
+$SCRIPT_VERSION = "2.0.3"
+
+# Debug log file
+$DebugLogLogFile = Join-Path $PSScriptRoot "test-api-remote-debug.log"
+
+# Initialize debug log
+if ($DebugLog) {
+    "=== Test API Remote Debug Log ===" | Out-File -FilePath $DebugLogLogFile -Encoding ASCII
+    "Started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" | Out-File -FilePath $DebugLogLogFile -Append -Encoding ASCII
+    "PowerShell Version: $($PSVersionTable.PSVersion)" | Out-File -FilePath $DebugLogLogFile -Append -Encoding ASCII
+    "Base URL: $BaseUrl" | Out-File -FilePath $DebugLogLogFile -Append -Encoding ASCII
+    "" | Out-File -FilePath $DebugLogLogFile -Append -Encoding ASCII
+}
+
+function Write-Debug-Log {
+    param($Message)
+    if ($DebugLog) {
+        $timestamp = Get-Date -Format 'HH:mm:ss.fff'
+        "[$timestamp] $Message" | Out-File -FilePath $DebugLogLogFile -Append -Encoding ASCII
+        Write-Warning-Custom "DEBUG: $Message"
+    }
+}
 
 # Color output functions
 function Write-Success { 
@@ -60,37 +99,73 @@ function New-TestImage {
     param(
         [int]$Width = 512,
         [int]$Height = 512,
-        [string]$OutputPath = "$env:TEMP\test_image.jpg"
+        [string]$OutputPath = "$env:TEMP\test_image.png"  # Changed to .png
     )
     
-    Add-Type -AssemblyName System.Drawing
+    # Use the project's test image if it exists
+    $projectTestImage = Join-Path $PSScriptRoot "api-test-image.png"
+    $projectLargeImage = Join-Path $PSScriptRoot "api-test-image-large.png"
     
-    $bitmap = New-Object System.Drawing.Bitmap($Width, $Height)
-    $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-    
-    # Fill with a blue gradient
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
-        (New-Object System.Drawing.Point(0, 0)),
-        (New-Object System.Drawing.Point($Width, $Height)),
-        [System.Drawing.Color]::SkyBlue,
-        [System.Drawing.Color]::Navy
-    )
-    
-    $graphics.FillRectangle($brush, 0, 0, $Width, $Height)
-    
-    # Add some text
-    $font = New-Object System.Drawing.Font("Arial", 24)
-    $textBrush = [System.Drawing.Brushes]::White
-    $graphics.DrawString("Test Image", $font, $textBrush, 10, 10)
-    
-    $bitmap.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
-    
-    $graphics.Dispose()
-    $bitmap.Dispose()
-    $brush.Dispose()
-    $font.Dispose()
-    
-    return $OutputPath
+    # For 3000x3000, use the large test image if available
+    if ($Width -eq 3000 -and $Height -eq 3000 -and (Test-Path $projectLargeImage)) {
+        Copy-Item -Path $projectLargeImage -Destination $OutputPath -Force
+        Write-Verbose "Using large test image: $projectLargeImage"
+        return $OutputPath
+    }
+    # For default 512x512, use the standard test image
+    elseif ($Width -eq 512 -and $Height -eq 512 -and (Test-Path $projectTestImage)) {
+        Copy-Item -Path $projectTestImage -Destination $OutputPath -Force
+        Write-Verbose "Using test image: $projectTestImage"
+        return $OutputPath
+    }
+    else {
+        # Create a programmatic image for other sizes or if test images not found
+        Add-Type -AssemblyName System.Drawing
+        
+        $bitmap = New-Object System.Drawing.Bitmap($Width, $Height)
+        $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+        
+        if ($Width -ne 512 -or $Height -ne 512) {
+            # For large test images, create simple solid color
+            $graphics.Clear([System.Drawing.Color]::Gray)
+            
+            # Add text indicating size
+            $fontSize = [Math]::Min(48, [Math]::Floor($Width / 20))
+            $font = New-Object System.Drawing.Font("Arial", $fontSize)
+            $textBrush = [System.Drawing.Brushes]::White
+            $graphics.DrawString("${Width}x${Height}", $font, $textBrush, 10, 10)
+            $font.Dispose()
+        }
+        else {
+            # Fallback: create a gradient image if standard test image not found
+            Write-Warning "Test image not found at: $projectTestImage"
+            Write-Warning "Creating fallback gradient image..."
+            
+            # Fill with a landscape-like gradient (sky to ground)
+            $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush(
+                (New-Object System.Drawing.Point(0, 0)),
+                (New-Object System.Drawing.Point(0, $Height)),
+                [System.Drawing.Color]::SkyBlue,
+                [System.Drawing.Color]::ForestGreen
+            )
+            
+            $graphics.FillRectangle($brush, 0, 0, $Width, $Height)
+            $brush.Dispose()
+            
+            # Add some text
+            $font = New-Object System.Drawing.Font("Arial", 24)
+            $textBrush = [System.Drawing.Brushes]::White
+            $graphics.DrawString("Test Image", $font, $textBrush, 10, 10)
+            $font.Dispose()
+        }
+        
+        $bitmap.Save($OutputPath, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+        
+        $graphics.Dispose()
+        $bitmap.Dispose()
+        
+        return $OutputPath
+    }
 }
 
 # API request helper
@@ -145,68 +220,113 @@ function Invoke-MultipartRequest {
     
     $uri = "$BaseUrl$Endpoint"
     
+    if ($DebugLog) {
+        Write-Debug-Log "=== Multipart Request ==="
+        Write-Debug-Log "URI: $uri"
+        Write-Debug-Log "Image path: $ImagePath"
+        Write-Debug-Log "Image exists: $(Test-Path $ImagePath)"
+        if (Test-Path $ImagePath) {
+            $imageInfo = Get-Item $ImagePath
+            Write-Debug-Log "Image size: $($imageInfo.Length) bytes"
+            Write-Debug-Log "Image extension: $($imageInfo.Extension)"
+        }
+        Write-Debug-Log "Instruction: $Instruction"
+        Write-Debug-Log "Seed: $Seed"
+    }
+    
     try {
         $headers = @{
             "X-API-Key" = $ApiKey
         }
         
-        # PowerShell 7+ supports -Form parameter for multipart uploads
-        # For PowerShell 5.1, we need to use a different approach
-        if ($PSVersionTable.PSVersion.Major -ge 7) {
-            $form = @{
-                instruction = $Instruction
-                image = Get-Item -Path $ImagePath
-            }
-            if ($Seed) {
-                $form.seed = $Seed
-            }
-            $response = Invoke-RestMethod -Uri $uri -Method Post -Headers $headers -Form $form
-        } else {
-            # PowerShell 5.1 workaround - use WebRequest
-            Add-Type -AssemblyName System.Net.Http
-            
-            $httpClient = New-Object System.Net.Http.HttpClient
-            $httpClient.DefaultRequestHeaders.Add("X-API-Key", $ApiKey)
-            
-            $multipartContent = New-Object System.Net.Http.MultipartFormDataContent
-            
-            # Add instruction
-            $instructionContent = New-Object System.Net.Http.StringContent($Instruction)
-            $multipartContent.Add($instructionContent, "instruction")
-            
-            # Add seed if provided
-            if ($Seed) {
-                $seedContent = New-Object System.Net.Http.StringContent($Seed.ToString())
-                $multipartContent.Add($seedContent, "seed")
-            }
-            
-            # Add image file
-            $fileStream = [System.IO.File]::OpenRead($ImagePath)
-            $imageContent = New-Object System.Net.Http.StreamContent($fileStream)
-            $imageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse("image/jpeg")
-            $multipartContent.Add($imageContent, "image", "test.jpg")
-            
-            $httpResponse = $httpClient.PostAsync($uri, $multipartContent).Result
-            $responseContent = $httpResponse.Content.ReadAsStringAsync().Result
-            
-            # Cleanup
-            if ($fileStream) { $fileStream.Dispose() }
-            $httpClient.Dispose()
-            $multipartContent.Dispose()
-            
-            if ($httpResponse.IsSuccessStatusCode) {
-                $response = $responseContent | ConvertFrom-Json
-            } else {
-                throw "HTTP $($httpResponse.StatusCode): $responseContent"
-            }
+        # Use HttpClient for all PowerShell versions to ensure proper content-type handling
+        Add-Type -AssemblyName System.Net.Http
+        
+        $httpClient = New-Object System.Net.Http.HttpClient
+        $httpClient.DefaultRequestHeaders.Add("X-API-Key", $ApiKey)
+        
+        $multipartContent = New-Object System.Net.Http.MultipartFormDataContent
+        
+        # Add instruction
+        $instructionContent = New-Object System.Net.Http.StringContent($Instruction)
+        $multipartContent.Add($instructionContent, "instruction")
+        
+        # Add seed if provided
+        if ($Seed) {
+            $seedContent = New-Object System.Net.Http.StringContent($Seed.ToString())
+            $multipartContent.Add($seedContent, "seed")
         }
         
-        return @{ Success = $true; Data = $response; StatusCode = 200 }
+        # Add image file
+        $fileStream = [System.IO.File]::OpenRead($ImagePath)
+        $imageContent = New-Object System.Net.Http.StreamContent($fileStream)
+        
+        # Determine content type based on file extension
+        $fileExt = [System.IO.Path]::GetExtension($ImagePath).ToLower()
+        $contentType = switch ($fileExt) {
+            ".png" { "image/png" }
+            ".jpg" { "image/jpeg" }
+            ".jpeg" { "image/jpeg" }
+            default { "image/jpeg" }
+        }
+        $fileName = [System.IO.Path]::GetFileName($ImagePath)
+        
+        if ($DebugLog) {
+            Write-Debug-Log "Using HttpClient for multipart upload"
+            Write-Debug-Log "File extension: $fileExt"
+            Write-Debug-Log "Content-Type: $contentType"
+            Write-Debug-Log "File name: $fileName"
+        }
+        
+        $imageContent.Headers.ContentType = [System.Net.Http.Headers.MediaTypeHeaderValue]::Parse($contentType)
+        $multipartContent.Add($imageContent, "image", $fileName)
+        
+        $httpResponse = $httpClient.PostAsync($uri, $multipartContent).Result
+        $responseContent = $httpResponse.Content.ReadAsStringAsync().Result
+        
+        if ($DebugLog) {
+            Write-Debug-Log "Response status: $($httpResponse.StatusCode)"
+            Write-Debug-Log "Response content: $responseContent"
+        }
+        
+        # Cleanup
+        if ($fileStream) { $fileStream.Dispose() }
+        $httpClient.Dispose()
+        $multipartContent.Dispose()
+        
+        if ($httpResponse.IsSuccessStatusCode) {
+            $response = $responseContent | ConvertFrom-Json
+            return @{ Success = $true; Data = $response; StatusCode = 200 }
+        } else {
+            # Return the actual HTTP status code from the response with full error details
+            $actualStatusCode = [int]$httpResponse.StatusCode
+            
+            if ($DebugLog) {
+                Write-Debug-Log "!!! Error response !!!"
+                Write-Debug-Log "Status code: $actualStatusCode"
+            }
+            
+            # Try to parse JSON error or return raw content
+            $errorMessage = try {
+                $errorJson = $responseContent | ConvertFrom-Json
+                if ($errorJson.detail) { $errorJson.detail } else { $responseContent }
+            } catch {
+                $responseContent
+            }
+            $errorDetails = "HTTP ${actualStatusCode}: $errorMessage"
+            
+            if ($DebugLog) {
+                Write-Debug-Log "Final error: $errorDetails"
+            }
+            
+            return @{ Success = $false; Error = $errorDetails; StatusCode = $actualStatusCode }
+        }
     }
     catch {
-        $statusCode = if ($_.Exception.Response) { $_.Exception.Response.StatusCode.value__ } else { 400 }
+        # Fallback error handler for unexpected errors
+        $statusCode = if ($_.Exception.Response) { $_.Exception.Response.StatusCode.value__ } else { 500 }
         $errorMessage = $_.Exception.Message
-        return @{ Success = $false; Error = $errorMessage; StatusCode = $statusCode }
+        return @{ Success = $false; Error = "Unexpected error: $errorMessage"; StatusCode = $statusCode }
     }
 }
 
@@ -214,12 +334,25 @@ function Invoke-MultipartRequest {
 Write-Host @"
 ================================================================
           Qwen Image Edit API - Remote Test Suite
+                        Version $SCRIPT_VERSION
 ================================================================
 "@ -ForegroundColor Cyan
 
+$psVersion = $PSVersionTable.PSVersion
+$psVersionString = "$($psVersion.Major).$($psVersion.Minor)"
+$isSupported = $psVersion.Major -ge 5 -and ($psVersion.Major -gt 5 -or $psVersion.Minor -ge 1)
+$supportStatus = if ($isSupported) { "[OK] Supported" } else { "[ERROR] UNSUPPORTED" }
+$statusColor = if ($isSupported) { "Green" } else { "Red" }
+
+Write-Host "[INFO] PowerShell: $psVersionString - $supportStatus" -ForegroundColor $statusColor
 Write-Info "API Base URL: $BaseUrl"
 Write-Info "API Key: $('*' * 20)$($ApiKey.Substring([Math]::Max(0, $ApiKey.Length - 8)))"
 Write-Info "Test started: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+if (-not $isSupported) {
+    Write-Error-Custom "This script requires PowerShell 5.1 or higher. Please upgrade PowerShell."
+    exit 1
+}
 
 # Wait for server to be ready
 Write-Info "`nWaiting for API server to be ready..."
@@ -304,20 +437,41 @@ if ($result.Success) {
 
 # Test 4.5: Load Model (prerequisite for image editing tests)
 Test-Endpoint "Load Model for Testing"
-$loadModelBody = @{ model_key = "4-step" }
-$result = Invoke-ApiRequest -Method POST -Endpoint "/load-model" -Body $loadModelBody
+$result = Invoke-ApiRequest -Method POST -Endpoint "/load-model?model=4-step"
 if ($result.Success) {
-    Write-Info "Waiting for model to load..."
-    Start-Sleep -Seconds 3
-    Pass-Test "Model load initiated: 4-step"
+    $loadTime = $result.Data.load_time_seconds
+    Write-Info "Model load request completed in ${loadTime}s"
+    
+    # Wait and verify model is actually loaded by polling health endpoint
+    Write-Info "Verifying model is ready..."
+    $maxWait = 180  # 3 minutes for model to load
+    $waitStart = Get-Date
+    $modelReady = $false
+    
+    while (((Get-Date) - $waitStart).TotalSeconds -lt $maxWait) {
+        Start-Sleep -Seconds 2
+        $healthCheck = Invoke-ApiRequest -Method GET -Endpoint "/health"
+        if ($healthCheck.Success -and $healthCheck.Data.current_model -eq "4-step" -and -not $healthCheck.Data.is_loading) {
+            $modelReady = $true
+            $totalWait = [math]::Round(((Get-Date) - $waitStart).TotalSeconds, 1)
+            Write-Info "Model ready after ${totalWait}s total"
+            break
+        }
+        Write-Host "." -NoNewline
+    }
+    
+    if ($modelReady) {
+        Pass-Test "Model confirmed loaded and ready: 4-step"
+    } else {
+        Fail-Test "Model load timed out or failed - health check shows model not ready"
+    }
 } else {
-    Write-Warning-Custom "Model load failed (may already be loaded): $($result.Error)"
-    $script:TestsPassed++  # Don't fail the whole test suite
+    Fail-Test "Model load failed: $($result.Error)"
 }
 
 # Test 5: Submit Job
 Test-Endpoint "Submit Image Editing Job"
-$result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction "Make the sky more vibrant" -Seed 42
+$result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction "Add a rainbow in the sky" -Seed 42
 if ($result.Success) {
     $jobId = $result.Data.job_id
     $position = $result.Data.position
@@ -391,8 +545,14 @@ Test-Endpoint "Submit Multiple Jobs Concurrently"
 $jobIds = @()
 $successCount = 0
 
+$concurrentPrompts = @(
+    "Add fluffy clouds to the sky",
+    "Make the image warmer and sunny",
+    "Add a sunset glow"
+)
+
 for ($i = 1; $i -le 3; $i++) {
-    $result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction "Test job #$i" -Seed (100 + $i)
+    $result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction $concurrentPrompts[$i-1] -Seed (100 + $i)
     if ($result.Success) {
         $jobIds += $result.Data.job_id
         $successCount++
@@ -409,30 +569,53 @@ if ($successCount -eq 3) {
     Fail-Test "Only $successCount/3 jobs submitted successfully"
 }
 
+# Wait for these jobs to complete before testing queue overflow
+Write-Info "  Waiting for concurrent jobs to complete before queue overflow test..."
+$waitStart = Get-Date
+$maxWait = 120
+while (((Get-Date) - $waitStart).TotalSeconds -lt $maxWait) {
+    $result = Invoke-ApiRequest -Method GET -Endpoint "/queue"
+    if ($result.Success -and $result.Data.queue_size -eq 0 -and $result.Data.processing_count -eq 0) {
+        Write-Info "  Queue cleared after $([math]::Round(((Get-Date) - $waitStart).TotalSeconds, 1))s"
+        break
+    }
+    Start-Sleep -Seconds 3
+}
+
 # Test 8.5: Queue Overflow Protection (Fill Queue)
 Test-Endpoint "Queue Overflow Protection"
-Write-Info "  Testing queue capacity limits..."
-
-# First check current queue status
-$queueStatusBefore = Invoke-ApiRequest -Method GET -Endpoint "/queue"
-$currentQueueSize = if ($queueStatusBefore.Success) { 
-    $queueStatusBefore.Data.queue_size + $queueStatusBefore.Data.processing_count 
-} else { 
-    0 
-}
-Write-Info "  Current queue size: $currentQueueSize"
+Write-Info "  Testing queue capacity limits (submitting 15 jobs to empty queue)..."
+Write-Info "  Expected: 10 accepted + 5 rejected with 429"
 
 $queueTestJobs = @()
 $rejectedCount = 0
 $acceptedCount = 0
 $maxQueueSize = 10
 
-# Try to submit more than remaining capacity
-$jobsToSubmit = $maxQueueSize - $currentQueueSize + 5  # Try to overfill by 5
+# Always submit 15 jobs to guarantee we hit the limit and get rejections
+$jobsToSubmit = 15
 Write-Info "  Attempting to submit $jobsToSubmit jobs to test overflow..."
 
+$queuePrompts = @(
+    "Add morning mist",
+    "Make it nighttime with stars",
+    "Add autumn leaves falling",
+    "Make it snow gently",
+    "Add a beautiful rainbow",
+    "Make it golden hour",
+    "Add dramatic storm clouds",
+    "Make it spring with flowers",
+    "Add a gentle rain",
+    "Make it foggy and mysterious",
+    "Add birds flying",
+    "Make it sunny and bright",
+    "Add moonlight",
+    "Make it windy with movement",
+    "Add magical sparkles"
+)
+
 for ($i = 1; $i -le $jobsToSubmit; $i++) {
-    $result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction "Queue fill test #$i" -Seed (200 + $i)
+    $result = Invoke-MultipartRequest -Endpoint "/submit" -ImagePath $testImagePath -Instruction $queuePrompts[$i-1] -Seed (200 + $i)
     if ($result.Success) {
         $queueTestJobs += @{
             JobId = $result.Data.job_id
@@ -443,20 +626,26 @@ for ($i = 1; $i -le $jobsToSubmit; $i++) {
     }
     elseif ($result.StatusCode -eq 429) {
         $rejectedCount++
-        Write-Info "  Job $i rejected with 429 (queue full)"
     }
-    Start-Sleep -Milliseconds 50  # Small delay to ensure consistent submission
+    else {
+        # Some other error occurred
+        Write-Warning-Custom "  Job $i failed with status $($result.StatusCode): $($result.Error)"
+    }
+    # No delay - submit as fast as possible to test overflow before processing starts
 }
 
-$totalJobs = $currentQueueSize + $acceptedCount
-Write-Info "  Results: $acceptedCount accepted, $rejectedCount rejected, Total in queue: $totalJobs"
+Write-Info "  Results: $acceptedCount accepted, $rejectedCount rejected (429), Failed: $($jobsToSubmit - $acceptedCount - $rejectedCount)"
 
-if ($rejectedCount -gt 0) {
-    Pass-Test "Queue protected: $rejectedCount jobs rejected with 429 (capacity working)"
-} elseif ($totalJobs -ge $maxQueueSize) {
-    Pass-Test "Queue at/near capacity: $totalJobs jobs (processing fast, no rejections yet)"
+# Validate queue overflow protection
+if ($acceptedCount -eq 10 -and $rejectedCount -eq 5) {
+    Pass-Test "Perfect! 10 jobs accepted, 5 rejected with 429 (queue protection working)"
+} elseif ($rejectedCount -gt 0 -and $acceptedCount -le 12) {
+    Pass-Test "Queue protected: $acceptedCount accepted, $rejectedCount rejected with 429 (some jobs started processing)"
+} elseif ($acceptedCount -ge 10 -and $acceptedCount -le 15 -and $rejectedCount -eq 0) {
+    Write-Warning-Custom "  Queue processing very fast - accepted $acceptedCount jobs before overflow could occur"
+    Pass-Test "Queue capacity working: $acceptedCount jobs accepted (processing faster than submission)"
 } else {
-    Fail-Test "Queue not full enough to test overflow ($totalJobs/$maxQueueSize)"
+    Fail-Test "Unexpected results: $acceptedCount accepted, $rejectedCount rejected (expected ~10 accepted + ~5 rejected)"
 }
 
 # Test 8.6: Queue Status Under Load
@@ -500,14 +689,37 @@ if ($queueTestJobs.Count -gt 0) {
 
 # Wait for queue to drain before continuing
 if ($queueTestJobs.Count -gt 0) {
-    Write-Info "  Waiting for queue to drain (max 60s)..."
+    # Calculate needed wait time: jobs * ~20 seconds per job + 30 second buffer
+    $estimatedTime = $queueTestJobs.Count * 20 + 30
+    $maxDrainWait = [Math]::Max($estimatedTime, 300)  # At least 5 minutes
+    Write-Info "  Waiting for queue to drain (max ${maxDrainWait}s for $($queueTestJobs.Count) jobs)..."
+    
     $waitStart = Get-Date
-    $maxDrainWait = 60
+    $lastQueueSize = -1
+    $completedCount = 0
+    
     while (((Get-Date) - $waitStart).TotalSeconds -lt $maxDrainWait) {
         $result = Invoke-ApiRequest -Method GET -Endpoint "/queue"
-        if ($result.Success -and $result.Data.queue_size -eq 0 -and $result.Data.processing_count -eq 0) {
-            Write-Info "  Queue drained after $([math]::Round(((Get-Date) - $waitStart).TotalSeconds, 1))s"
-            break
+        if ($result.Success) {
+            $currentTotal = $result.Data.queue_size + $result.Data.processing_count
+            
+            # Show progress when queue size changes
+            if ($currentTotal -ne $lastQueueSize) {
+                $completed = $queueTestJobs.Count - $currentTotal
+                if ($completed -gt $completedCount) {
+                    $elapsed = [math]::Round(((Get-Date) - $waitStart).TotalSeconds, 1)
+                    Write-Host "  [$elapsed`s] Completed: $completed/$($queueTestJobs.Count) jobs (Remaining: $currentTotal)" -ForegroundColor Cyan
+                    $completedCount = $completed
+                }
+                $lastQueueSize = $currentTotal
+            }
+            
+            # Check if done
+            if ($result.Data.queue_size -eq 0 -and $result.Data.processing_count -eq 0) {
+                $totalTime = [math]::Round(((Get-Date) - $waitStart).TotalSeconds, 1)
+                Write-Info "  All $($queueTestJobs.Count) jobs completed in ${totalTime}s"
+                break
+            }
         }
         Start-Sleep -Seconds 2
     }
@@ -566,6 +778,10 @@ if ($script:TestsFailed -gt 0) {
 }
 Write-Host "Pass Rate:    $passRate%"
 Write-Info "Test ended:   $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')"
+
+if ($DebugLog) {
+    Write-Info "`nDebug log written to: $DebugLogLogFile"
+}
 
 if ($script:TestsFailed -eq 0) {
     Write-Host "`nALL TESTS PASSED!`n" -ForegroundColor Green

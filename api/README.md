@@ -10,6 +10,17 @@ This API provides a REST interface to the Qwen Image Edit models, allowing you t
 - Choose between 3 models (4-step, 8-step, 40-step) for speed vs quality
 - Get edited images back in the response or save them to disk
 
+### 🖼️ Supported Image Formats
+
+The API accepts the following image formats:
+- **PNG** (`.png`) - Recommended for images with transparency
+- **JPEG** (`.jpg`, `.jpeg`) - Standard photo format
+  
+**Limitations:**
+- Maximum file size: **10 MB**
+- Maximum dimensions: **2048 x 2048 pixels**
+- Files larger than limits will be rejected with HTTP 400
+
 ## 📋 Prerequisites
 
 **You must install the main Qwen project first!**
@@ -92,12 +103,18 @@ List all available models with specifications
 Edit an image based on text instruction
 
 **Request (multipart/form-data):**
-- `image` (file, required): Input image (JPG or PNG)
+- `image` (file, required): Input image (PNG, JPG, or JPEG)
 - `instruction` (string, required): Editing instruction
 - `model` (string, optional): "4-step", "8-step", or "40-step" (default: "4-step")
 - `seed` (integer, optional): Random seed for reproducibility
 - `system_prompt` (string, optional): System prompt for styling
 - `return_image` (boolean, optional): Return image in response (default: true)
+
+**Supported Image Formats:**
+- PNG (`.png`) - Recommended for transparency
+- JPEG (`.jpg`, `.jpeg`) - Standard photo format
+- Maximum size: 10MB
+- Maximum dimensions: 2048x2048 pixels
 
 **Response:**
 - If `return_image=true`: PNG image in response body with headers:

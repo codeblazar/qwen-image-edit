@@ -207,6 +207,16 @@ Then open your browser to **http://127.0.0.1:7860**
 - 🎭 Automatic face preservation
 - 💾 Clean filenames: `qwen04_0001.png`, `qwen08_0042.png`, `qwen40_0001.png`
 
+### 🖼️ Supported Image Formats
+
+All interfaces (Gradio UI, REST API, CLI scripts) support:
+- **PNG** (`.png`) - Recommended for images with transparency
+- **JPEG** (`.jpg`, `.jpeg`) - Standard photo format
+
+**API Limitations** (Gradio UI and CLI have no file size limits):
+- Maximum file size: **10 MB**
+- Maximum dimensions: **2048 x 2048 pixels**
+
 ### Command-Line Options
 
 ```powershell
