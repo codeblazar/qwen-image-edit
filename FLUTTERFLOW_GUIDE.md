@@ -648,8 +648,8 @@ For applications with multiple concurrent users:
 ## Need Help?
 
 **Documentation:**
-- Full API docs: `QUEUE_SYSTEM.md`
-- Quick start: `QUICK_START.md`
+- API documentation: `api/README.md`
+- Main README: `README.md`
 - Swagger UI: `https://qwen.codeblazar.org/docs`
 
 **Common Issues:**
