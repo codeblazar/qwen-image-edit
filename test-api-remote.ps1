@@ -380,6 +380,29 @@ if (-not $serverReady) {
     exit 1
 }
 
+# Check for required test images
+Write-Info "`nChecking for required test images..."
+$testImageSmall = Join-Path $PSScriptRoot "api-test-image.png"
+$testImageLarge = Join-Path $PSScriptRoot "api-test-image-large.png"
+
+if (-not (Test-Path $testImageSmall)) {
+    Write-Error-Custom "Required test image not found: $testImageSmall"
+    Write-Error-Custom "Please ensure 'api-test-image.png' (512x512) is in the same directory as this script."
+    exit 1
+}
+
+if (-not (Test-Path $testImageLarge)) {
+    Write-Error-Custom "Required test image not found: $testImageLarge"
+    Write-Error-Custom "Please ensure 'api-test-image-large.png' (3000x3000) is in the same directory as this script."
+    exit 1
+}
+
+$smallSize = (Get-Item $testImageSmall).Length / 1MB
+$largeSize = (Get-Item $testImageLarge).Length / 1MB
+Write-Success "Test images found:"
+Write-Success "  - api-test-image.png ($($smallSize.ToString('N2')) MB)"
+Write-Success "  - api-test-image-large.png ($($largeSize.ToString('N2')) MB)"
+
 # Create test image
 Write-Info "`nCreating test image..."
 $testImagePath = New-TestImage
@@ -399,13 +422,14 @@ if ($result.Success) {
 Test-Endpoint "Invalid API Key Rejection"
 $headers = @{ "X-API-Key" = "invalid-key-12345" }
 try {
-    $response = Invoke-RestMethod -Uri "$BaseUrl/models" -Headers $headers
-    Fail-Test "Should have rejected invalid key"
+    $response = Invoke-WebRequest -Uri "$BaseUrl/models" -Headers $headers -Method GET -ErrorAction Stop
+    Fail-Test "Should have rejected invalid key (got $($response.StatusCode))"
 } catch {
-    if ($_.Exception.Response.StatusCode.value__ -eq 401) {
+    $statusCode = $_.Exception.Response.StatusCode.value__
+    if ($statusCode -eq 401) {
         Pass-Test "Correctly rejected with 401"
     } else {
-        Fail-Test "Expected 401, got $($_.Exception.Response.StatusCode.value__)"
+        Fail-Test "Expected 401, got $statusCode"
     }
 }
 
