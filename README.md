@@ -1,382 +1,762 @@
-# Qwen Image Edit# Qwen Image Edit 3. **❌ NOT USING VENV**: Do NOT install in system Python
+# Qwen Image Edit# Qwen Image Edit# Qwen Image Edit 3. **❌ NOT USING VENV**: Do NOT install in system Python
 
-   - ✅ USE: Always activate `.venv` before running ANY command
 
-AI-powered image editing using Qwen's Image Edit 2509 model with quantized INT4 transformers for 24GB VRAM GPUs.   - Check prompt shows `(.venv)` at the start
 
-   - If you see errors, you're probably not in the venv
+AI-powered image editing using Qwen's Image Edit 2509 model with quantized INT4 transformers for 24GB VRAM GPUs.   - ✅ USE: Always activate `.venv` before running ANY command
 
-## ⚠️ CRITICAL: Common Mistakes
+
+
+## 🚀 Quick StartAI-powered image editing using Qwen's Image Edit 2509 model with quantized INT4 transformers for 24GB VRAM GPUs.   - Check prompt shows `(.venv)` at the start
+
+
+
+**⚠️ ALWAYS activate virtual environment first:**   - If you see errors, you're probably not in the venv
+
+```powershell
+
+.\.venv\Scripts\Activate.ps1  # Look for (.venv) in prompt## ⚠️ CRITICAL: Common Mistakes
+
+```
 
 4. **❌ WRONG PARAMETERS**: Do NOT assume all models use the same parameters
 
-1. **❌ WRONG MODEL**: Do NOT use `Qwen/Qwen-Image-Edit-2509` (40GB)   - ✅ ALWAYS check the HuggingFace model card for optimal settings
+### Web UI (Recommended)
 
-   - ✅ USE: `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)   - Lightning/Turbo/distilled models need different `true_cfg_scale` values
+```powershell1. **❌ WRONG MODEL**: Do NOT use `Qwen/Qwen-Image-Edit-2509` (40GB)   - ✅ ALWAYS check the HuggingFace model card for optimal settings
+
+python qwen_gradio_ui.py
+
+```   - ✅ USE: `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)   - Lightning/Turbo/distilled models need different `true_cfg_scale` values
+
+Access at **http://127.0.0.1:7860**
 
       - **Example**: Standard models use `true_cfg_scale=4.0`, Lightning uses `1.0`
 
+**Features:** Multi-model support (4/8/40-step) • Random seeds • Face preservation • Sequential file naming
+
 2. **❌ WRONG NUNCHAKU**: Do NOT use `pip install nunchaku` (wrong package!)   - Using wrong parameters = poor quality, blocky/pixelated output
-
-   - ✅ USE: Install from source (see [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md))   - See "Model-Specific Parameters" section below
-
-   
-
-3. **❌ NOT USING VENV**: Always activate `.venv` before running commands## 🎯 Overview
-
-   - ✅ Check prompt shows `(.venv)` at the startAI-powered multi-image editing using Qwen's Image Edit model with quantized transformers for 24GB VRAM GPUs.
-
-
-
-## 🚀 Quick Start## ⚠️ CRITICAL: READ THIS FIRST
-
-
-
-### Option 1: Web UI (Recommended)### 🚫 Three Common Mistakes That Will Waste Hours
-
-```powershell
-
-.\launch.ps1    # Select option 21. **❌ WRONG MODEL**: Do NOT use `Qwen/Qwen-Image-Edit-2509` (40GB full model)
-
-```   - ✅ USE: `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)
-
-Access at http://localhost:7860   - The 40GB model **WILL NOT FIT** on RTX 4090 24GB VRAM
-
-   - You will get OOM (Out of Memory) errors
-
-### Option 2: REST API
-
-```powershell2. **❌ WRONG NUNCHAKU**: Do NOT use `pip install nunchaku` (0.15.4 stats package)
-
-.\launch.ps1    # Select option 1   - ✅ USE: Install from source (see below)
-
-```   - The PyPI package "nunchaku" is a completely different stats library
-
-Swagger UI at http://localhost:8000/docs   - You need `nunchaku==1.0.1+torch2.5` for AI model quantization
-
-
-
-See [`api/README.md`](api/README.md) for API documentation and test scripts.3. **❌ NOT USING VENV**: Do NOT install in system Python
-
-   - ✅ ALWAYS activate `.venv` before running ANY command
-
-## 📦 Installation   - Check prompt shows `(.venv)` at the start
-
-   - If you see errors, you're probably not in the venv
-
-**Full installation guide:** [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md)
-
-## 🎯 Overview
-
-Quick steps:
-
-1. Create venv: `python -m venv .venv`This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality AI image editing on consumer GPUs like the RTX 4090 (24GB VRAM).
-
-2. Activate: `.\.venv\Scripts\Activate.ps1`
-
-3. Install requirements: `pip install -r requirements.txt`**🌟 NEW: Gradio Web UI** - Interactive web interface for easy image editing!
-
-4. Install nunchaku from source (see guide)- `qwen_gradio_ui.py` - **Recommended!** Web interface with multi-model support
-
-
-
-## ✨ Features**🚀 NEW: REST API** - Production-ready FastAPI server with queue management!
-
-- See [`api/README.md`](api/README.md) for complete API documentation
-
-- **🎨 Gradio Web UI**: Interactive web interface with multi-model support- Job queue system with concurrent processing
-
-- **🚀 REST API**: Production FastAPI server with job queue- Comprehensive test suite (14 tests, 100% coverage)
-
-- **Multi-Model Support**: 4-step (10s), 8-step (40s), 40-step (3min)- API key authentication with automatic management
-
-- **Face Preservation**: Automatic identity preservation- Cloudflare Tunnel ready for remote access
-
-- **INT4 Quantization**: 12.7GB model fits in 24GB VRAM
-
-- **Queue Management**: Concurrent job processing with overflow protection**Command-line scripts:**
-
-- **Comprehensive Testing**: 14-test suite with 100% API coverage- `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
-
-- `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
-
-## 🖼️ Supported Image Formats- `qwen_image_edit_lightning_4step.py` - Lightning 4-step model (ultra-fast, ~10s)
-
-- `qwen_instruction_edit.py` - Instruction-based single-image editing
-
-- **PNG** (`.png`) - Recommended for transparency
-
-- **JPEG** (`.jpg`, `.jpeg`) - Standard photos## ✨ Features
-
-
-
-**API Limitations:** 10MB max, 2048x2048 max dimensions- **🎨 Gradio Web UI**: Easy-to-use web interface with real-time preview
-
-- **🚀 REST API**: Production-ready FastAPI server with job queue (see [`api/README.md`](api/README.md))
-
-## 🛠️ System Requirements- **Multi-Model Support**: Switch between 4-step, 8-step, and 40-step models on-the-fly
-
-- **Random Seeds**: Automatic random seed generation for variety
-
-### Hardware- **Face Preservation**: Strong automatic face identity preservation
-
-- **GPU**: NVIDIA RTX 4090 (24GB VRAM) or similar- **Quantized Model Support**: Uses INT4 quantization (rank 128) to fit in 24GB VRAM
-
-- **RAM**: 32GB recommended- **High Quality Output**: ~12.7GB quantized model maintains excellent quality
-
-- **Disk**: ~50GB for models- **Lightning Fast Option**: 4-step model generates in ~10 seconds!
-
-- **CUDA-Optimized**: Built for NVIDIA GPUs with Compute Capability 8.9 (RTX 4090)
-
-### Software- **Queue Management**: API handles concurrent jobs with automatic queuing
-
-- **OS**: Windows 10/11- **Comprehensive Testing**: 14-test suite validates all functionality
-
-- **Python**: 3.10.6
-
-- **CUDA**: 12.1+ or 13.0## 🖼️ Example
-
-- **Visual Studio Build Tools 2022**: C++ components required
-
-**Prompt**: "The magician bear is on the left, the alchemist bear is on the right, facing each other in the central park square."
-
-## 📁 Project Structure
-
-**Generated Image**: `output_image_edit_plus_r128.png`
-
-```- **Inference Time**: 2:44 (40 steps)
-
-qwen-image-edit/- **Model Size**: 12.7GB quantized
-
-├── api/                          # REST API server- **VRAM Usage**: ~23GB
-
-│   ├── main.py                   # FastAPI application
-
-│   ├── job_queue.py              # Queue management## 🛠️ System Requirements
-
-│   ├── pipeline_manager.py       # Model loading
-
-│   └── README.md                 # API documentation### Hardware
-
-├── qwen_gradio_ui.py             # Web UI- **GPU**: NVIDIA GeForce RTX 4090 (24GB VRAM) or similar
-
-├── test-api-remote.ps1           # Windows test script- **VRAM**: 24GB minimum
-
-├── test-api-remote.sh            # macOS/Linux test script- **Disk Space**: ~50GB for models and dependencies
-
-├── launch.ps1                    # Launch menu- **RAM**: 32GB recommended
-
-└── README.md                     # This file- **Compute Capability**: 8.9 (sm_89)
-
-```
-
-### Software
-
-## 🧪 Testing- **OS**: Windows 10/11
-
-- **Python**: 3.10.6
-
-Test scripts validate all API functionality (14 tests):- **CUDA**: 13.0 (or 12.1+)
-
-- **Driver**: 581.29 or newer
-
-**Windows:**- **Visual Studio Build Tools 2022**: With C++ components
-
-```powershell
-
-.\test-api-remote.ps1 "your-api-key"## 📦 Installation
-
-```
-
-### Step 1: Create Virtual Environment
-
-**macOS/Linux:**
-
-```bash**⚠️ CRITICAL: You MUST use a virtual environment!**
-
-./test-api-remote.sh "your-api-key"
-
-``````powershell
-
-# Navigate to project directory
-
-See [`TEST_SCRIPTS_README.md`](TEST_SCRIPTS_README.md) for details.cd C:\Projects\qwen-image-edit
-
-
-
-## ⏱️ Performance# Create virtual environment
-
-python -m venv .venv
-
-| Model | Steps | Time | Quality |
-
-|-------|-------|------|---------|# Activate it (DO THIS EVERY TIME)
-
-| 4-step | 4 | ~10s | Good |.\.venv\Scripts\Activate.ps1
-
-| 8-step | 8 | ~40s | Better |
-
-| 40-step | 40 | ~3min | Best |# Verify activation - you should see (.venv) in your prompt
-
-# Your prompt should look like: (.venv) PS C:\Projects\qwen-image-edit>
-
-**Model Switching:** Takes 2-3 minutes due to GPU memory cleanup and model loading.```
-
-
-
-## 📖 Documentation### Step 2: Install PyTorch with CUDA
-
-
-
-- **API Documentation**: [`api/README.md`](api/README.md)```powershell
-
-- **Installation Guide**: [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md)# MAKE SURE (.venv) is showing in your prompt!
-
-- **Test Scripts**: [`TEST_SCRIPTS_README.md`](TEST_SCRIPTS_README.md)pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
-
-- **Flutter Integration**: [`FLUTTERFLOW_GUIDE.md`](FLUTTERFLOW_GUIDE.md)```
-
-- **Changelog**: [`CHANGELOG.md`](CHANGELOG.md)
-
-### Step 3: Install Diffusers from GitHub
-
-## 🔒 API Authentication
-
-**⚠️ Must be from GitHub for QwenImageEditPlusPipeline support**
-
-The API uses API key authentication. Keys are auto-generated on first run.
-
-```powershell
-
-View your key:# MAKE SURE (.venv) is showing in your prompt!
-
-```powershellpip install git+https://github.com/huggingface/diffusers.git
-
-cd api```
-
-.\show-api-key.ps1
-
-```### Step 4: Install Other Dependencies
-
-
-
-See [`api/README.md`](api/README.md) for authentication details.```powershell
-
-# MAKE SURE (.venv) is showing in your prompt!
-
-## 🎯 Example Usagepip install -r requirements.txt
-
-```
-
-### Gradio UI
-
-1. Run `.\launch.ps1` → Select option 2### Step 5: Install nunchaku from Source
-
-2. Upload image
-
-3. Enter instruction: "Add Superman cape and suit"**⚠️ DO NOT use `pip install nunchaku` - that's a different package!**
-
-4. Click Generate
-
-See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for complete instructions.
 
 ### REST API
 
-```python**Quick version:**
+```powershell   - ✅ USE: Install from source (see [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md))   - See "Model-Specific Parameters" section below
 
-import requests```powershell
+.\launch.ps1  # Select option 1
 
-# MAKE SURE (.venv) is showing in your prompt!
+```   
 
-headers = {"X-API-Key": "your-key"}
+Swagger UI at **http://localhost:8000/docs** - See [`api/README.md`](api/README.md) for full API documentation.
 
-files = {"image": open("photo.jpg", "rb")}# Install Visual Studio Build Tools 2022 first (if not already installed)
+3. **❌ NOT USING VENV**: Always activate `.venv` before running commands## 🎯 Overview
 
-data = {# Download from: https://visualstudio.microsoft.com/downloads/
+### Command-Line Scripts
 
-    "instruction": "Transform into Superman",
+```powershell   - ✅ Check prompt shows `(.venv)` at the startAI-powered multi-image editing using Qwen's Image Edit model with quantized transformers for 24GB VRAM GPUs.
 
-    "model": "4-step"# Clone and build nunchaku
+python qwen_image_edit_nunchaku.py        # 40-step (~2:45, best quality)
 
-}cd $env:TEMP
+python qwen_image_edit_lightning.py       # 8-step (~21s, fast)
+
+python qwen_image_edit_lightning_4step.py # 4-step (~10s, ultra-fast)
+
+python qwen_instruction_edit.py           # Single-image instruction editing## 🚀 Quick Start## ⚠️ CRITICAL: READ THIS FIRST
+
+```
+
+
+
+---
+
+### Option 1: Web UI (Recommended)### 🚫 Three Common Mistakes That Will Waste Hours
+
+## ⚠️ CRITICAL: Common Mistakes
+
+```powershell
+
+### 1. ❌ WRONG MODEL
+
+**Don't use:** `Qwen/Qwen-Image-Edit-2509` (40GB - causes OOM errors on RTX 4090)  .\launch.ps1    # Select option 21. **❌ WRONG MODEL**: Do NOT use `Qwen/Qwen-Image-Edit-2509` (40GB full model)
+
+**Use:** `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)
+
+```   - ✅ USE: `nunchaku-tech/nunchaku-qwen-image-edit-2509` (12.7GB quantized)
+
+### 2. ❌ WRONG NUNCHAKU  
+
+**Don't use:** `pip install nunchaku` (0.15.4 stats package - wrong library!)  Access at http://localhost:7860   - The 40GB model **WILL NOT FIT** on RTX 4090 24GB VRAM
+
+**Use:** Install from source - see [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md)
+
+   - You will get OOM (Out of Memory) errors
+
+### 3. ❌ NOT USING VENV
+
+**Don't:** Run in system Python  ### Option 2: REST API
+
+**Do:** Always activate `.venv` - verify `(.venv)` shows in prompt
+
+```powershell2. **❌ WRONG NUNCHAKU**: Do NOT use `pip install nunchaku` (0.15.4 stats package)
+
+### 4. ❌ WRONG PARAMETERS
+
+**Don't:** Assume all models use same parameters  .\launch.ps1    # Select option 1   - ✅ USE: Install from source (see below)
+
+**Do:** Check HuggingFace model card for each variant
+
+- Standard models: `true_cfg_scale=4.0````   - The PyPI package "nunchaku" is a completely different stats library
+
+- Lightning models: `true_cfg_scale=1.0`
+
+- Wrong params = blocky/pixelated outputSwagger UI at http://localhost:8000/docs   - You need `nunchaku==1.0.1+torch2.5` for AI model quantization
+
+
+
+---
+
+
+
+## 📦 InstallationSee [`api/README.md`](api/README.md) for API documentation and test scripts.3. **❌ NOT USING VENV**: Do NOT install in system Python
+
+
+
+**Full guide:** [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md)   - ✅ ALWAYS activate `.venv` before running ANY command
+
+
+
+**Quick steps:**## 📦 Installation   - Check prompt shows `(.venv)` at the start
+
+```powershell
+
+# 1. Create virtual environment   - If you see errors, you're probably not in the venv
+
+python -m venv .venv
+
+.\.venv\Scripts\Activate.ps1**Full installation guide:** [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md)
+
+
+
+# 2. Install PyTorch with CUDA## 🎯 Overview
+
+pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+
+Quick steps:
+
+# 3. Install Diffusers from GitHub (required for QwenImageEditPlusPipeline)
+
+pip install git+https://github.com/huggingface/diffusers.git1. Create venv: `python -m venv .venv`This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality AI image editing on consumer GPUs like the RTX 4090 (24GB VRAM).
+
+
+
+# 4. Install other dependencies2. Activate: `.\.venv\Scripts\Activate.ps1`
+
+pip install -r requirements.txt
+
+3. Install requirements: `pip install -r requirements.txt`**🌟 NEW: Gradio Web UI** - Interactive web interface for easy image editing!
+
+# 5. Install nunchaku from source (DO NOT use pip install nunchaku!)
+
+cd $env:TEMP4. Install nunchaku from source (see guide)- `qwen_gradio_ui.py` - **Recommended!** Web interface with multi-model support
 
 git clone https://github.com/nunchaku-tech/nunchaku.git
 
-response = requests.post(cd nunchaku
+cd nunchaku
 
-    "http://localhost:8000/api/v1/edit",git submodule update --init --recursive
+git submodule update --init --recursive
 
-    headers=headers,$env:TORCH_CUDA_ARCH_LIST="8.9"
+$env:TORCH_CUDA_ARCH_LIST="8.9"## ✨ Features**🚀 NEW: REST API** - Production-ready FastAPI server with queue management!
 
-    files=files,$env:DISTUTILS_USE_SDK="1"
+pip install -e . --no-build-isolation
 
-    data=datapip install -e . --no-build-isolation
+cd C:\Projects\qwen-image-edit- See [`api/README.md`](api/README.md) for complete API documentation
 
-)
 
-# Return to project
 
-with open("output.png", "wb") as f:cd C:\Projects\qwen-image-edit
+# 6. Verify installation- **🎨 Gradio Web UI**: Interactive web interface with multi-model support- Job queue system with concurrent processing
 
-    f.write(response.content)```
+pip show nunchaku  # Should show 1.0.1+torch2.5 (NOT 0.15.4!)
+
+.\check.ps1        # Run prerequisites check- **🚀 REST API**: Production FastAPI server with job queue- Comprehensive test suite (14 tests, 100% coverage)
 
 ```
 
-**Verify nunchaku installation:**
+- **Multi-Model Support**: 4-step (10s), 8-step (40s), 40-step (3min)- API key authentication with automatic management
 
-## 🤝 Contributing```powershell
+---
 
-# Should show: nunchaku==1.0.1+torch2.5 (NOT 0.15.4!)
+- **Face Preservation**: Automatic identity preservation- Cloudflare Tunnel ready for remote access
 
-Contributions welcome! Please ensure:pip show nunchaku
+## ✨ Features
 
-- Code follows existing style```
+- **INT4 Quantization**: 12.7GB model fits in 24GB VRAM
 
-- All tests pass
+- **🎨 Gradio Web UI** - Interactive interface with real-time preview
 
-- Documentation is updated### Step 6: Run Prerequisites Check
+- **🚀 REST API** - Production FastAPI server with job queue ([api/README.md](api/README.md))- **Queue Management**: Concurrent job processing with overflow protection**Command-line scripts:**
+
+- **Multi-Model Support** - Switch between 4-step, 8-step, and 40-step models
+
+- **Face Preservation** - Strong automatic identity preservation- **Comprehensive Testing**: 14-test suite with 100% API coverage- `qwen_image_edit_nunchaku.py` - Standard 40-step model (best quality, ~2:45)
+
+- **INT4 Quantization** - 12.7GB model fits in 24GB VRAM (rank 128)
+
+- **Queue Management** - Concurrent job processing with overflow protection- `qwen_image_edit_lightning.py` - Lightning 8-step model (fast, ~21s)
+
+- **Comprehensive Testing** - 14-test suite validates all functionality
+
+## 🖼️ Supported Image Formats- `qwen_image_edit_lightning_4step.py` - Lightning 4-step model (ultra-fast, ~10s)
+
+---
+
+- `qwen_instruction_edit.py` - Instruction-based single-image editing
+
+## 🛠️ System Requirements
+
+- **PNG** (`.png`) - Recommended for transparency
+
+### Hardware
+
+- **GPU**: NVIDIA RTX 4090 (24GB VRAM) or similar- **JPEG** (`.jpg`, `.jpeg`) - Standard photos## ✨ Features
+
+- **RAM**: 32GB recommended
+
+- **Disk**: ~50GB for models and dependencies
+
+- **Compute Capability**: 8.9 (sm_89)
+
+**API Limitations:** 10MB max, 2048x2048 max dimensions- **🎨 Gradio Web UI**: Easy-to-use web interface with real-time preview
+
+### Software
+
+- **OS**: Windows 10/11- **🚀 REST API**: Production-ready FastAPI server with job queue (see [`api/README.md`](api/README.md))
+
+- **Python**: 3.10.6
+
+- **CUDA**: 13.0 (or 12.1+)## 🛠️ System Requirements- **Multi-Model Support**: Switch between 4-step, 8-step, and 40-step models on-the-fly
+
+- **Driver**: 581.29 or newer
+
+- **Visual Studio Build Tools 2022**: With C++ components- **Random Seeds**: Automatic random seed generation for variety
 
 
 
-## 📝 License```powershell
+---### Hardware- **Face Preservation**: Strong automatic face identity preservation
+
+
+
+## 📊 Performance- **GPU**: NVIDIA RTX 4090 (24GB VRAM) or similar- **Quantized Model Support**: Uses INT4 quantization (rank 128) to fit in 24GB VRAM
+
+
+
+| Model | Steps | Time | Quality | Use Case |- **RAM**: 32GB recommended- **High Quality Output**: ~12.7GB quantized model maintains excellent quality
+
+|-------|-------|------|---------|----------|
+
+| Lightning 4-step | 4 | ~10s | Good | Rapid prototyping |- **Disk**: ~50GB for models- **Lightning Fast Option**: 4-step model generates in ~10 seconds!
+
+| Lightning 8-step | 8 | ~21s | Very Good | Quick iterations |
+
+| Standard 40-step | 40 | ~2:45 | Best | Final production |- **CUDA-Optimized**: Built for NVIDIA GPUs with Compute Capability 8.9 (RTX 4090)
+
+
+
+**VRAM Usage:** ~23GB during inference  ### Software- **Queue Management**: API handles concurrent jobs with automatic queuing
+
+**Model Size:** 12.7GB per quantized model  
+
+**Model Switching:** 2-3 minutes (GPU cleanup + loading)- **OS**: Windows 10/11- **Comprehensive Testing**: 14-test suite validates all functionality
+
+
+
+---- **Python**: 3.10.6
+
+
+
+## 🔧 Model Options- **CUDA**: 12.1+ or 13.0## 🖼️ Example
+
+
+
+**⚠️ Only use models from `nunchaku-tech/nunchaku-qwen-image-edit-2509`**- **Visual Studio Build Tools 2022**: C++ components required
+
+
+
+### Standard Models (40 steps)**Prompt**: "The magician bear is on the left, the alchemist bear is on the right, facing each other in the central park square."
+
+- `svdq-int4_r32` (11.5 GB) - Good quality
+
+- `svdq-int4_r128` (12.7 GB) ⭐ **Best Quality** ← **We use this**## 📁 Project Structure
+
+
+
+### Lightning Models (8 steps)**Generated Image**: `output_image_edit_plus_r128.png`
+
+- `svdq-int4_r32-lightningv2.0-8steps` - Fast
+
+- `svdq-int4_r128-lightningv2.0-8steps` ⭐ **Best Balance**```- **Inference Time**: 2:44 (40 steps)
+
+
+
+### Lightning Models (4 steps)qwen-image-edit/- **Model Size**: 12.7GB quantized
+
+- `svdq-int4_r32-lightningv2.0-4steps` - Very fast
+
+- `svdq-int4_r128-lightningv2.0-4steps` - Very fast + Better quality├── api/                          # REST API server- **VRAM Usage**: ~23GB
+
+
+
+---│   ├── main.py                   # FastAPI application
+
+
+
+## 🎛️ Model-Specific Parameters│   ├── job_queue.py              # Queue management## 🛠️ System Requirements
+
+
+
+**⚠️ Different models require different parameters!**│   ├── pipeline_manager.py       # Model loading
+
+
+
+### Standard Models (40 steps)│   └── README.md                 # API documentation### Hardware
+
+```python
+
+inputs = {├── qwen_gradio_ui.py             # Web UI- **GPU**: NVIDIA GeForce RTX 4090 (24GB VRAM) or similar
+
+    "num_inference_steps": 40,
+
+    "true_cfg_scale": 4.0,  # High guidance├── test-api-remote.ps1           # Windows test script- **VRAM**: 24GB minimum
+
+    "guidance_scale": 1.0,
+
+    "negative_prompt": " ",├── test-api-remote.sh            # macOS/Linux test script- **Disk Space**: ~50GB for models and dependencies
+
+}
+
+```├── launch.ps1                    # Launch menu- **RAM**: 32GB recommended
+
+
+
+### Lightning Models (8 or 4 steps)└── README.md                     # This file- **Compute Capability**: 8.9 (sm_89)
+
+```python
+
+inputs = {```
+
+    "num_inference_steps": 8,  # or 4
+
+    "true_cfg_scale": 1.0,     # ⚠️ DIFFERENT! Must be 1.0### Software
+
+    "guidance_scale": 1.0,
+
+    "negative_prompt": " ",## 🧪 Testing- **OS**: Windows 10/11
+
+}
+
+```- **Python**: 3.10.6
+
+
+
+**Common mistake:** Using `true_cfg_scale=4.0` with Lightning → blocky/pixelated outputTest scripts validate all API functionality (14 tests):- **CUDA**: 13.0 (or 12.1+)
+
+
+
+**Always check:** https://huggingface.co/nunchaku-tech/nunchaku-qwen-image-edit-2509- **Driver**: 581.29 or newer
+
+
+
+---**Windows:**- **Visual Studio Build Tools 2022**: With C++ components
+
+
+
+## 🧪 Testing```powershell
+
+
+
+Comprehensive test scripts validate all API functionality (14 tests, 100% pass rate):.\test-api-remote.ps1 "your-api-key"## 📦 Installation
+
+
+
+**Windows:**```
+
+```powershell
+
+.\test-api-remote.ps1 "your-api-key"### Step 1: Create Virtual Environment
+
+.\test-api-remote.ps1 "your-api-key" -DebugLog  # With debug logging
+
+```**macOS/Linux:**
+
+
+
+**macOS/Linux:**```bash**⚠️ CRITICAL: You MUST use a virtual environment!**
+
+```bash
+
+./test-api-remote.sh "your-api-key"./test-api-remote.sh "your-api-key"
+
+./test-api-remote.sh --debug "your-api-key"  # With debug logging
+
+`````````powershell
+
+
+
+**Required test images** (must be in same directory as scripts):# Navigate to project directory
+
+- `api-test-image.png` - Standard test (512x512, ~1.3MB)
+
+- `api-test-image-large.png` - Overflow test (3000x3000, ~12.7MB)See [`TEST_SCRIPTS_README.md`](TEST_SCRIPTS_README.md) for details.cd C:\Projects\qwen-image-edit
+
+
+
+**Tests performed:** Health check • Auth validation • Model loading • Job submission • Queue management • Overflow protection • File size limits • Error handling
+
+
+
+---## ⏱️ Performance# Create virtual environment
+
+
+
+## 🖼️ Supported Image Formatspython -m venv .venv
+
+
+
+- **PNG** (`.png`) - Recommended for transparency| Model | Steps | Time | Quality |
+
+- **JPEG** (`.jpg`, `.jpeg`) - Standard photos
+
+|-------|-------|------|---------|# Activate it (DO THIS EVERY TIME)
+
+**API Limitations:**
+
+- Max file size: 10 MB| 4-step | 4 | ~10s | Good |.\.venv\Scripts\Activate.ps1
+
+- Max dimensions: 2048 x 2048 pixels
+
+- (Gradio UI and CLI scripts have no limits)| 8-step | 8 | ~40s | Better |
+
+
+
+---| 40-step | 40 | ~3min | Best |# Verify activation - you should see (.venv) in your prompt
+
+
+
+## 📁 Project Structure# Your prompt should look like: (.venv) PS C:\Projects\qwen-image-edit>
+
+
+
+```**Model Switching:** Takes 2-3 minutes due to GPU memory cleanup and model loading.```
+
+qwen-image-edit/
+
+├── .venv/                        # Virtual environment
+
+├── api/                          # REST API server
+
+│   ├── main.py                  # FastAPI application## 📖 Documentation### Step 2: Install PyTorch with CUDA
+
+│   ├── models.py                # Data models
+
+│   ├── pipeline_manager.py     # Model & queue management
+
+│   └── README.md                # API documentation
+
+├── generated-images/             # Output folder- **API Documentation**: [`api/README.md`](api/README.md)```powershell
+
+│   ├── qwen04_0001.png         # 4-step outputs
+
+│   ├── qwen08_0001.png         # 8-step outputs- **Installation Guide**: [`INSTALL_NUNCHAKU.md`](INSTALL_NUNCHAKU.md)# MAKE SURE (.venv) is showing in your prompt!
+
+│   └── qwen40_0001.png         # 40-step outputs
+
+├── qwen_gradio_ui.py            # ⭐ WEB UI (Recommended!)- **Test Scripts**: [`TEST_SCRIPTS_README.md`](TEST_SCRIPTS_README.md)pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 torchaudio==2.5.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+
+├── qwen_image_edit_nunchaku.py  # 40-step CLI
+
+├── qwen_image_edit_lightning.py # 8-step CLI- **Flutter Integration**: [`FLUTTERFLOW_GUIDE.md`](FLUTTERFLOW_GUIDE.md)```
+
+├── qwen_image_edit_lightning_4step.py # 4-step CLI
+
+├── qwen_instruction_edit.py     # Single-image editing- **Changelog**: [`CHANGELOG.md`](CHANGELOG.md)
+
+├── launch.ps1                    # Launcher menu
+
+├── test-api-remote.ps1          # Windows API tests### Step 3: Install Diffusers from GitHub
+
+├── test-api-remote.sh           # macOS/Linux API tests
+
+├── check.ps1                     # Prerequisites checker## 🔒 API Authentication
+
+├── install-nunchaku-patched.ps1 # Installation helper
+
+└── requirements.txt              # Python dependencies**⚠️ Must be from GitHub for QwenImageEditPlusPipeline support**
+
+```
+
+The API uses API key authentication. Keys are auto-generated on first run.
+
+---
+
+```powershell
+
+## 📖 Documentation
+
+View your key:# MAKE SURE (.venv) is showing in your prompt!
+
+- **[INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md)** - Complete installation guide
+
+- **[api/README.md](api/README.md)** - REST API documentation```powershellpip install git+https://github.com/huggingface/diffusers.git
+
+- **[FLUTTERFLOW_GUIDE.md](FLUTTERFLOW_GUIDE.md)** - FlutterFlow integration
+
+cd api```
+
+---
+
+.\show-api-key.ps1
+
+## 🐛 Troubleshooting
+
+```### Step 4: Install Other Dependencies
+
+### ❌ "ModuleNotFoundError: No module named 'nunchaku'"
+
+
+
+**Cause:** Not in venv OR wrong nunchaku installed
+
+See [`api/README.md`](api/README.md) for authentication details.```powershell
+
+**Solution:**
+
+```powershell# MAKE SURE (.venv) is showing in your prompt!
+
+# 1. Activate venv
+
+.\.venv\Scripts\Activate.ps1## 🎯 Example Usagepip install -r requirements.txt
+
+
+
+# 2. Check version```
+
+pip show nunchaku  # Should show 1.0.1+torch2.5
+
+### Gradio UI
+
+# 3. If version is 0.15.4 - WRONG PACKAGE!
+
+pip uninstall nunchaku -y1. Run `.\launch.ps1` → Select option 2### Step 5: Install nunchaku from Source
+
+# Then reinstall from source (see Installation section)
+
+```2. Upload image
+
+
+
+### ❌ "CUDA out of memory"3. Enter instruction: "Add Superman cape and suit"**⚠️ DO NOT use `pip install nunchaku` - that's a different package!**
+
+
+
+**Causes:** Wrong 40GB model • Other GPU apps • Insufficient VRAM4. Click Generate
+
+
+
+**Solution:**See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for complete instructions.
+
+```powershell
+
+# 1. Verify quantized model### REST API
+
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
+
+# Should show: nunchaku-tech/nunchaku-qwen-image-edit-2509```python**Quick version:**
+
+
+
+# 2. Close GPU applications (Chrome, other AI apps)import requests```powershell
+
+nvidia-smi  # Check GPU usage
 
 # MAKE SURE (.venv) is showing in your prompt!
 
-See project license file..\check.ps1
+# 3. Ensure using quantized transformer
+
+# See "Model Options" section for correct code patternheaders = {"X-API-Key": "your-key"}
 
 ```
 
-## 🙏 Acknowledgments
+files = {"image": open("photo.jpg", "rb")}# Install Visual Studio Build Tools 2022 first (if not already installed)
 
-## 🚀 Quick Start
+### ❌ Compilation fails during nunchaku installation
+
+data = {# Download from: https://visualstudio.microsoft.com/downloads/
+
+**Solution:** Install Visual Studio Build Tools 2022
+
+- Download: https://visualstudio.microsoft.com/downloads/    "instruction": "Transform into Superman",
+
+- Select: "Desktop development with C++"
+
+- See [INSTALL_NUNCHAKU.md](INSTALL_NUNCHAKU.md) for details    "model": "4-step"# Clone and build nunchaku
+
+
+
+### ❌ Output is blocky, pixelated, or low quality}cd $env:TEMP
+
+
+
+**Cause:** Wrong parameters for model typegit clone https://github.com/nunchaku-tech/nunchaku.git
+
+
+
+**Solution:**response = requests.post(cd nunchaku
+
+```powershell
+
+# Check if using Lightning model    "http://localhost:8000/api/v1/edit",git submodule update --init --recursive
+
+Get-Content your_script.py | Select-String "lightning"
+
+    headers=headers,$env:TORCH_CUDA_ARCH_LIST="8.9"
+
+# Verify true_cfg_scale matches model type
+
+Get-Content your_script.py | Select-String "true_cfg_scale"    files=files,$env:DISTUTILS_USE_SDK="1"
+
+
+
+# Should be:    data=datapip install -e . --no-build-isolation
+
+# Lightning models: true_cfg_scale=1.0
+
+# Standard models:  true_cfg_scale=4.0)
+
+```
+
+# Return to project
+
+**Prevention:** Always check HuggingFace model card before using new variants
+
+with open("output.png", "wb") as f:cd C:\Projects\qwen-image-edit
+
+### ❌ Script runs but generates garbage/black images
+
+    f.write(response.content)```
+
+**Cause:** Wrong 40GB model or wrong nunchaku version
+
+```
+
+**Solution:**
+
+```powershell**Verify nunchaku installation:**
+
+# Verify both are correct
+
+pip show nunchaku  # Should be 1.0.1+torch2.5## 🤝 Contributing```powershell
+
+Get-Content qwen_image_edit_nunchaku.py | Select-String "nunchaku-tech"
+
+```# Should show: nunchaku==1.0.1+torch2.5 (NOT 0.15.4!)
+
+
+
+---Contributions welcome! Please ensure:pip show nunchaku
+
+
+
+## ✅ Pre-Flight Checklist- Code follows existing style```
+
+
+
+Before running scripts, verify:- All tests pass
+
+
+
+- [ ] Prompt shows `(.venv)` at the start- Documentation is updated### Step 6: Run Prerequisites Check
+
+- [ ] `pip show nunchaku` shows `1.0.1+torch2.5` (NOT 0.15.4)
+
+- [ ] Scripts reference `nunchaku-tech/nunchaku-qwen-image-edit-2509`
+
+- [ ] `.\check.ps1` passes all checks
+
+- [ ] `nvidia-smi` shows 24GB VRAM available## 📝 License```powershell
+
+- [ ] ~50GB free disk space
+
+- [ ] No other apps using significant GPU# MAKE SURE (.venv) is showing in your prompt!
+
+
+
+---See project license file..\check.ps1
+
+
+
+## ⚠️ Known Issues```
+
+
+
+1. **Xet Storage Warning** - Install `hf_xet` for faster downloads: `pip install hf_xet`## 🙏 Acknowledgments
+
+2. **CUDA Version Mismatch** - PyTorch 2.5.1 (CUDA 12.1) on CUDA 13.0 system - patch applied, can ignore
+
+3. **torch_dtype Deprecation** - Minor warning, no impact## 🚀 Quick Start
+
+4. **Config Attributes Warning** - `pooled_projection_dim` warning, can ignore
 
 - **Qwen Team**: For the Qwen Image Edit 2509 model
 
+---
+
 - **Nunchaku Team**: For INT4 quantization support**⚠️ ALWAYS activate venv first!**
+
+## 🙏 Credits
 
 - **HuggingFace**: For model hosting and diffusers library
 
-```powershell
-# Navigate to project
+- **Model**: [Qwen Image Edit 2509](https://huggingface.co/Qwen/Qwen-Image-Edit-2509) by Alibaba Cloud (September 2024)
+
+- **Quantization**: [nunchaku](https://github.com/nunchaku-tech/nunchaku) by nunchaku-tech```powershell
+
+- **Diffusers**: [Hugging Face Diffusers](https://github.com/huggingface/diffusers)# Navigate to project
+
 cd C:\Projects\qwen-image-edit
 
+---
+
 # Activate virtual environment (DO THIS EVERY TIME!)
-.\.venv\Scripts\Activate.ps1
 
-# Verify you see (.venv) in your prompt
+## 📝 License.\.venv\Scripts\Activate.ps1
+
+
+
+This project uses models and libraries with their respective licenses. Check individual component licenses before commercial use.# Verify you see (.venv) in your prompt
+
 # Prompt should show: (.venv) PS C:\Projects\qwen-image-edit>
+
+---```
+
+
+
+## 🤝 Contributing### 🌟 Recommended: Gradio Web UI
+
+
+
+Contributions welcome! Before submitting:**Easy-to-use web interface with all features!**
+
+- Ensure code follows existing style
+
+- All tests pass```powershell
+
+- Documentation updated# Start the web UI
+
+- No absolute paths (check: `Get-ChildItem -Recurse -Include *.py,*.ps1,*.md | Select-String -Pattern "C:\\"`)python qwen_gradio_ui.py
+
 ```
 
-### 🌟 Recommended: Gradio Web UI
-
-**Easy-to-use web interface with all features!**
-
-```powershell
-# Start the web UI
-python qwen_gradio_ui.py
-```
+---
 
 Then open your browser to **http://127.0.0.1:7860**
+
+**Made with ❤️ for AI image editing on consumer GPUs**
 
 **Features:**
 - 🎨 Interactive web interface - no code editing needed
