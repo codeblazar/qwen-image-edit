@@ -70,7 +70,11 @@ See [`api/README.md`](api/README.md) for API documentation and test scripts.3. *
 
 Quick steps:
 
-1. Create venv: `python -m venv .venv`This project implements the Qwen Image Edit 2509 model using quantized INT4 transformers via nunchaku, enabling high-quality AI image editing on consumer GPUs like the RTX 4090 (24GB VRAM).
+1. Create venv: `python -m venv .venv`This project implements the Qwen Image Edit 2509 model - an **MMDiT (Multimodal Diffusion Transformer)** architecture - using quantized INT4 transformers via nunchaku, enabling high-quality AI image editing on consumer GPUs like the RTX 4090 (24GB VRAM).
+
+**Architecture:** MMDiT (Multimodal Diffusion Transformer) - NOT traditional U-Net Stable Diffusion  
+**Model Type:** Vision-language transformer for instruction-based image editing  
+**Quantization:** INT4 (rank 128) via nunchaku for memory efficiency
 
 2. Activate: `.\.venv\Scripts\Activate.ps1`
 

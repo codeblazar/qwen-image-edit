@@ -119,7 +119,7 @@ if ($installResult -eq 0) {
     Write-Host "========================================`n" -ForegroundColor Cyan
     
     Write-Host "Verifying installation..." -ForegroundColor Yellow
-    python -c "from nunchaku import NunchakuQwenImageTransformer2DModel; print('✓ Nunchaku imported successfully!')"
+    python -c "from nunchaku import NunchakuQwenImageTransformer2DModel; print('Nunchaku imported successfully!')"
     
     if ($LASTEXITCODE -eq 0) {
         Write-Host "`n[SUCCESS] Nunchaku is ready to use!" -ForegroundColor Green
