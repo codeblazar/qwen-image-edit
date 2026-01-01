@@ -72,7 +72,10 @@ Before building your FlutterFlow integration, test the API endpoints using the S
    - **image:** Click "Choose File" and select a JPG or PNG (max 10MB, max 2048x2048px)
    - **instruction:** Enter text like "Make the sky blue"
    - **seed:** (Optional) Enter a number like `42`
-   - **model:** (Optional) Select `4-step` (default, fast), `8-step` (balanced), or `40-step` (highest quality)
+  - **preset:** (Optional) Preferred field name. Select `4-step`, `8-step`, or `40-step`.
+    - Important: The API uses the **currently loaded preset**. If you send `preset`, it must match the loaded preset or you’ll get `409 Conflict`.
+    - For most FlutterFlow clients, you should **omit `preset`** and just use whatever preset the server admin has loaded by default.
+  - **model:** (Optional) Deprecated alias for `preset` (avoid in new integrations)
 8. Click **"Execute"**
 
 **Expected Response (200):**
@@ -160,7 +163,10 @@ This is the production-ready approach for FlutterFlow integration.
   - `image` (type: File) - Your image file
   - `instruction` (type: Text) - e.g., "Make the sky blue"
   - `seed` (type: Number, optional) - e.g., `42`
-  - `model` (type: Text, optional) - Model quality: `"4-step"` (default, fast), `"8-step"` (balanced), or `"40-step"` (highest quality)
+  - `preset` (type: Text, optional) - Preferred field name. One of: `"4-step"`, `"8-step"`, `"40-step"`.
+    - Most apps should **omit this** and use the server’s default preset.
+    - If you include it, it must match the currently loaded preset or you’ll get `409 Conflict`.
+  - `model` (type: Text, optional) - Deprecated alias for `preset` (avoid)
 
 **Model Selection Guide:**
 - **4-step** (default): Ultra-fast (~20 seconds) - Good for testing and quick edits
@@ -227,15 +233,12 @@ This is the production-ready approach for FlutterFlow integration.
 
 ### Step 3: Handle the Result
 
-Once you get `status: "completed"`, you have the `result_path` filename. The actual image file is stored on the API server. 
+Once you get `status: "completed"`, download the edited image directly from the API:
 
-**Implementation Options:**
+- **GET** `/status/{job_id}/result`
+- Returns the PNG image bytes (direct download)
 
-1. **Server-side file serving** - Work with your API administrator to add an endpoint to download the result image by filename
-2. **Shared file storage** - If the API server has shared storage accessible to your FlutterFlow backend
-3. **Base64 encoding** - Request that the API be extended to include base64-encoded image data in the completion response
-
-Coordinate with your API administrator to determine the best approach for your infrastructure.
+In FlutterFlow, create a GET call that hits `/status/$jobId/result` and treat the response as a file/image download.
 
 ---
 
@@ -342,6 +345,23 @@ Headers:
 
 ---
 
+### Download Result Image
+
+**FlutterFlow API Call Configuration:**
+
+```
+Method: GET
+Endpoint: /status/[jobIdVariable]/result
+Headers:
+  X-API-Key: [your-api-key]
+```
+
+**Expected Response:**
+- Status Code: `200` (success, PNG bytes)
+- Status Code: `404` (job not found, or not completed yet)
+
+---
+
 ### Get Queue Status (Optional)
 
 Want to show users how busy the API is?
@@ -379,7 +399,7 @@ Show this on your UI: "Queue: 4/10 jobs"
 | `400` | Bad Request | Show error: "Invalid image or instruction" |
 | `401` | Unauthorized | Show error: "Invalid API key" (check your key!) |
 | `404` | Not Found | Job doesn't exist (cleaned up after 1 hour) |
-| `409` | Conflict | Model is loading, try again in a few seconds |
+| `409` | Conflict | Preset mismatch (requested vs loaded), or server busy (loading/generating). Usually: omit `preset` and retry later if needed. |
 | `429` | Too Many Requests | Queue is full, tell user to wait |
 | `500` | Server Error | Show error: "Server error, try again" |
 
@@ -576,6 +596,7 @@ try {
 | `/models` | GET | List available models |
 | `/submit` | POST | Submit job to queue |
 | `/status/{job_id}` | GET | Check job status |
+| `/status/{job_id}/result` | GET | Download completed image |
 | `/queue` | GET | Get queue statistics |
 
 ### Job Status Values
@@ -620,9 +641,8 @@ try {
 
 ### Result Image Not Accessible?
 
-- The API returns a file path (`result_path`), not image bytes
-- Coordinate with your API administrator to implement image retrieval
-- Options include: file serving endpoint, shared storage, or base64 encoding in response
+- Use `GET /status/{job_id}/result` to download the image bytes once the job is completed
+- If you get `404`, the job may not be completed yet (keep polling `/status/{job_id}`)
 
 ---
 

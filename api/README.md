@@ -240,7 +240,7 @@ Include the header `X-API-Key: your-key-here` in all requests to protected endpo
 ### Protected Endpoints
 - ✅ `POST /api/v1/submit` - Submit image editing job (queued processing)
 - ✅ `GET /api/v1/status/{job_id}` - Get job status
-- ✅ `GET /api/v1/result/{job_id}` - Download result image
+- ✅ `GET /api/v1/status/{job_id}/result` - Download result image
 - ✅ `POST /api/v1/load-model` - Load a specific model
 - ✅ `GET /api/v1/models` - List available models
 
