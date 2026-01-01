@@ -153,7 +153,7 @@ def load_api_key():
     return "changeme-insecure-default-key"
 
 API_KEY = load_api_key()
-print(f"🔑 API Server loaded key: {API_KEY[:20]}...{API_KEY[-8:]}")
+print(f"API Server loaded key: {API_KEY[:20]}...{API_KEY[-8:]}")
 
 # API Key Authentication
 async def verify_api_key(x_api_key: str = Header(..., description="API Key for authentication")):
