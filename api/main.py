@@ -37,7 +37,7 @@ def load_local_config() -> dict:
     try:
         return json.loads(config_path.read_text(encoding="utf-8"))
     except Exception as e:
-        print(f"⚠️ Failed to read {config_path.name}: {e}")
+        print(f"[WARN] Failed to read {config_path.name}: {e}")
         return {}
 
 
@@ -116,21 +116,21 @@ async def startup_event():
     """Start the job queue on application startup"""
     job_queue.process_callback = process_job_callback
     job_queue.start()
-    print("✅ Job queue started with processing callback")
+    print("[OK] Job queue started with processing callback")
 
     # Auto-load the default preset in the background so /edit is ready without a manual /load-model.
     if DEFAULT_PRESET in pipeline_manager.list_models():
         asyncio.create_task(pipeline_manager.load_model(DEFAULT_PRESET))
-        print(f"🔄 Auto-loading default preset: {DEFAULT_PRESET}")
+        print(f"[INFO] Auto-loading default preset: {DEFAULT_PRESET}")
     else:
-        print(f"⚠️ Invalid QWEN_DEFAULT_PRESET '{DEFAULT_PRESET}' - skipping auto-load")
+        print(f"[WARN] Invalid QWEN_DEFAULT_PRESET '{DEFAULT_PRESET}' - skipping auto-load")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Stop the job queue on application shutdown"""
     await job_queue.stop()
-    print("✅ Job queue stopped")
+    print("[OK] Job queue stopped")
 
 
 # API Key Configuration

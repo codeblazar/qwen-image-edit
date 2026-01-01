@@ -133,9 +133,11 @@ function Get-ProcessInfo {
     Write-Section "Running Processes"
     
     # Check API on port 8000
-    $port8000 = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
+    $port8000 = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue |
+        Where-Object { $_.State -eq 'Listen' -and $_.OwningProcess -ne 0 } |
+        Select-Object -First 1
     if ($port8000) {
-        $apiProcess = Get-Process -Id $port8000.OwningProcess -ErrorAction SilentlyContinue
+        $apiProcess = Get-Process -Id $port8000.OwningProcess -ErrorAction SilentlyContinue | Select-Object -First 1
         Write-Host "[OK] API Server running on port 8000" -ForegroundColor Green
         Write-Host "  Process: $($apiProcess.ProcessName) (PID: $($apiProcess.Id))" -ForegroundColor Gray
         Write-Host "  CPU: $($apiProcess.CPU)" -ForegroundColor Gray
@@ -359,7 +361,10 @@ switch ($Action) {
         Write-Section "Quick Status Summary"
         
         $apiRunning = $null -ne (Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue)
-        $tunnelRunning = $null -ne (Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue)
+        $tunnelProcRunning = $null -ne (Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue)
+        $tunnelContainerId = Get-DockerTunnelStatus
+        $tunnelDockerRunning = $tunnelContainerId -ne $null -and [string]::IsNullOrWhiteSpace($tunnelContainerId) -eq $false
+        $tunnelRunning = $tunnelProcRunning -or $tunnelDockerRunning
         
         Write-Host "API Server (port 8000):  " -NoNewline
         if ($apiRunning) { 

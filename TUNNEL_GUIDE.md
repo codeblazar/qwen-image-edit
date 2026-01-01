@@ -60,6 +60,25 @@ Quick fixes:
 .\tunnel-debug.ps1 restart
 ```
 
+### Cloudflare Error 502 (Bad Gateway)
+
+If the public URL returns **502 Bad Gateway** while the local API is healthy, Cloudflare is reaching the tunnel, but **cloudflared cannot reach the origin service**.
+
+First, confirm the local API works:
+```powershell
+curl http://localhost:8000/api/v1/health
+```
+
+Then check tunnel logs for the configured origin URL:
+```powershell
+docker logs qwen-cloudflared --tail 200
+```
+
+If logs show a bad origin such as `http://jhost.docker.internal:8000` (typo) or `http://localhost:8000` (wrong from inside Docker), fix the Public Hostname service in Cloudflare Zero Trust to:
+- `http://host.docker.internal:8000`
+
+Once Cloudflare is pointing at `http://host.docker.internal:8000`, restart the tunnel and re-test.
+
 ### Common Issues
 
 #### 1. Tunnel Running But Not Connected
