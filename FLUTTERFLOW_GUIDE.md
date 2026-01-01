@@ -4,6 +4,10 @@ This guide shows you how to integrate the Qwen Image Edit API into your FlutterF
 
 ---
 
+## Before You Start (Admin)
+
+Because the service is hosted on a home PC and may be offline, the administrator should follow the bring-up checklist in [ADMIN_GUIDE.md](ADMIN_GUIDE.md) before anyone proceeds with FlutterFlow.
+
 ## Quick Overview
 
 This API uses a **queue-based workflow**:
