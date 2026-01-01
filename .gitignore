@@ -32,6 +32,9 @@ api/.api_key
 .api_key_history
 api/.api_key_history
 
+# Local-only API config (do not commit)
+api/config.local.json
+
 # Model Cache
 .cache/
 *.safetensors

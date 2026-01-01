@@ -7,6 +7,7 @@ from fastapi.responses import Response, JSONResponse
 from PIL import Image
 import io
 import os
+import json
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Literal
@@ -27,6 +28,24 @@ MODEL_LOAD_TIMEOUT_SECONDS = 180  # 3 minute timeout for model loading
 # Queue Configuration (can be overridden with environment variables)
 MAX_QUEUE_SIZE = int(os.getenv("MAX_QUEUE_SIZE", "10"))  # Maximum jobs in queue
 QUEUE_CLEANUP_AGE = int(os.getenv("QUEUE_CLEANUP_AGE", "3600"))  # Cleanup age in seconds (default: 1 hour)
+
+def load_local_config() -> dict:
+    """Load optional local-only config from api/config.local.json (not committed)."""
+    config_path = Path(__file__).parent / "config.local.json"
+    if not config_path.exists():
+        return {}
+    try:
+        return json.loads(config_path.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"⚠️ Failed to read {config_path.name}: {e}")
+        return {}
+
+
+LOCAL_CONFIG = load_local_config()
+
+# Default preset to load on startup.
+# Priority: local config file -> env var -> 4-step
+DEFAULT_PRESET = str(LOCAL_CONFIG.get("default_preset") or os.getenv("QWEN_DEFAULT_PRESET") or "4-step")
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -62,15 +81,25 @@ async def process_job_callback(job):
         pil_image = Image.open(io.BytesIO(job.image_data)).convert("RGB")
         
         # Generate the image using pipeline manager
+        job_model = job.model or pipeline_manager.current_model
+        if job_model is None:
+            raise RuntimeError("No model loaded for job processing")
+
+        # If the loaded model differs from the job's intended model, load it now.
+        # This allows queued jobs to preserve their requested preset.
+        if pipeline_manager.current_model != job_model:
+            await pipeline_manager.load_model(job_model)
+
         result_image, actual_seed = await pipeline_manager.generate_image(
             image=pil_image,
             instruction=job.instruction,
+            model_key=job_model,
             seed=job.seed,
             system_prompt=job.system_prompt
         )
         
         # Save the result
-        result_path = save_image(result_image, job.model, actual_seed)
+        result_path = save_image(result_image, job_model, actual_seed)
         
         # Mark job as completed
         job_queue.complete_job(job.job_id, result_path, actual_seed)
@@ -88,6 +117,13 @@ async def startup_event():
     job_queue.process_callback = process_job_callback
     job_queue.start()
     print("✅ Job queue started with processing callback")
+
+    # Auto-load the default preset in the background so /edit is ready without a manual /load-model.
+    if DEFAULT_PRESET in pipeline_manager.list_models():
+        asyncio.create_task(pipeline_manager.load_model(DEFAULT_PRESET))
+        print(f"🔄 Auto-loading default preset: {DEFAULT_PRESET}")
+    else:
+        print(f"⚠️ Invalid QWEN_DEFAULT_PRESET '{DEFAULT_PRESET}' - skipping auto-load")
 
 
 @app.on_event("shutdown")
@@ -248,6 +284,7 @@ async def load_model(
             "status": "success",
             "message": f"Model '{model}' loaded and ready for image generation",
             "model": model,
+            "preset": model,
             "model_name": model_info.get("name", model),
             "load_time_seconds": round(elapsed, 2),
             "estimated_generation_time": model_info.get("estimated_time", "unknown"),
@@ -295,6 +332,14 @@ async def list_models():
 async def submit_job(
     image: UploadFile = File(..., description="Input image (JPG, PNG)"),
     instruction: str = Form(..., description="Editing instruction"),
+    preset: Optional[Literal["4-step", "8-step", "40-step"]] = Form(
+        default=None,
+        description="Preferred field. Requested preset for this job. Must match the currently loaded preset; call /api/v1/load-model to switch."
+    ),
+    model: Optional[Literal["4-step", "8-step", "40-step"]] = Form(
+        default=None,
+        description="Deprecated alias for 'preset'. Must match the currently loaded preset; call /api/v1/load-model to switch."
+    ),
     seed: Optional[int] = Form(default=None, description="Random seed"),
     system_prompt: Optional[str] = Form(default=None, description="Optional system prompt")
 ):
@@ -358,6 +403,22 @@ async def submit_job(
             raise HTTPException(
                 status_code=400,
                 detail="No model loaded. Please call /api/v1/load-model first to load a model."
+            )
+
+        if preset and model and preset != model:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Conflicting fields: preset='{preset}' and model='{model}'. Please send only 'preset' (preferred) or 'model' (deprecated)."
+            )
+
+        requested_model = preset or model
+        if requested_model and requested_model != pipeline_manager.current_model:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Requested preset '{requested_model}' does not match the currently loaded preset '{pipeline_manager.current_model}'. "
+                    f"Call /api/v1/load-model?model={requested_model} first, then submit again."
+                )
             )
         
         # Submit job to queue
@@ -505,6 +566,14 @@ async def get_queue_status():
 async def edit_image(
     image: UploadFile = File(..., description="Input image (JPG, PNG)"),
     instruction: str = Form(..., description="Editing instruction (e.g., 'Make this person into Superman')"),
+    preset: Optional[Literal["4-step", "8-step", "40-step"]] = Form(
+        default=None,
+        description="Preferred field. Requested preset for this edit. Must match the currently loaded preset; call /api/v1/load-model to switch."
+    ),
+    model: Optional[Literal["4-step", "8-step", "40-step"]] = Form(
+        default=None,
+        description="Deprecated alias for 'preset'. Must match the currently loaded preset; call /api/v1/load-model to switch."
+    ),
     seed: Optional[int] = Form(
         default=None,
         description="Random seed for reproducibility. If not provided, uses random seed."
@@ -588,6 +657,22 @@ async def edit_image(
                 status_code=400,
                 detail="No model loaded. Please call /api/v1/load-model first to load a model."
             )
+
+        if preset and model and preset != model:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Conflicting fields: preset='{preset}' and model='{model}'. Please send only 'preset' (preferred) or 'model' (deprecated)."
+            )
+
+        requested_model = preset or model
+        if requested_model and requested_model != pipeline_manager.current_model:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Requested preset '{requested_model}' does not match the currently loaded preset '{pipeline_manager.current_model}'. "
+                    f"Call /api/v1/load-model?model={requested_model} first, then retry."
+                )
+            )
         
         # STEP 3: Check if busy
         if pipeline_manager.is_loading:
@@ -629,6 +714,7 @@ async def edit_image(
                 headers={
                     "X-Seed": str(used_seed),
                     "X-Model": pipeline_manager.current_model,
+                    "X-Preset": pipeline_manager.current_model,
                     "X-Saved-Path": saved_path,
                     "Content-Disposition": f'attachment; filename="{Path(saved_path).name}"'
                 }
@@ -640,6 +726,7 @@ async def edit_image(
                     "filepath": saved_path,
                     "seed": used_seed,
                     "model": pipeline_manager.current_model,
+                    "preset": pipeline_manager.current_model,
                     "instruction": instruction
                 }
             )

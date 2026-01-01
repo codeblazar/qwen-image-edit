@@ -105,10 +105,14 @@ Edit an image based on text instruction
 **Request (multipart/form-data):**
 - `image` (file, required): Input image (PNG, JPG, or JPEG)
 - `instruction` (string, required): Editing instruction
-- `model` (string, optional): "4-step", "8-step", or "40-step" (default: "4-step")
+- `preset` (string, optional): Preferred field name. "4-step", "8-step", or "40-step".
+- `model` (string, optional): Deprecated alias for `preset`.
 - `seed` (integer, optional): Random seed for reproducibility
 - `system_prompt` (string, optional): System prompt for styling
 - `return_image` (boolean, optional): Return image in response (default: true)
+
+**Important:** This endpoint uses the **currently loaded preset**. To switch presets, call `POST /api/v1/load-model?model=4-step|8-step|40-step` first.
+If you provide `preset`/`model` and it does not match the currently loaded preset, the API returns **409 Conflict** with a clear message.
 
 **Supported Image Formats:**
 - PNG (`.png`) - Recommended for transparency
@@ -120,6 +124,7 @@ Edit an image based on text instruction
 - If `return_image=true`: PNG image in response body with headers:
   - `X-Seed`: Seed used for generation
   - `X-Model`: Model used
+  - `X-Preset`: Same value as `X-Model` (clearer name)
   - `X-Saved-Path`: Where image was saved
 - If `return_image=false`: JSON with filepath and metadata
 
@@ -129,7 +134,7 @@ curl -X POST "http://localhost:8000/api/v1/edit" `
   -H "X-API-Key: your-api-key-here" `
   -F "image=@my_photo.jpg" `
   -F "instruction=Transform this person into Superman with cape and suit" `
-  -F "model=4-step" `
+  -F "preset=4-step" `
   --output edited_image.png
 ```
 
@@ -146,7 +151,7 @@ with open("my_photo.jpg", "rb") as f:
         headers=headers,
         data={
             "instruction": "Make this person into Superman",
-            "model": "4-step",
+          "preset": "4-step",
             "seed": 42
         }
     )
