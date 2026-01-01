@@ -46,6 +46,29 @@ function Test-CloudflaredInstalled {
     return $null -ne $cloudflared
 }
 
+function Test-DockerInstalled {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($null -eq $docker) { return $false }
+    try {
+        $null = & docker version 2>$null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Get-CloudflareTunnelToken {
+    $tokenFile = Join-Path $projectRoot 'cloudflare-tunnel-token.local.txt'
+    if ($env:QWEN_CF_TUNNEL_TOKEN -and $env:QWEN_CF_TUNNEL_TOKEN.Trim()) {
+        return $env:QWEN_CF_TUNNEL_TOKEN.Trim()
+    }
+    if (Test-Path $tokenFile) {
+        $token = (Get-Content $tokenFile -Raw).Trim()
+        if ($token) { return $token }
+    }
+    return $null
+}
+
 Write-Host ""
 Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host "    QWEN IMAGE EDIT - LAUNCHER" -ForegroundColor Green
@@ -68,11 +91,22 @@ $choice = Read-Host "Choice (1/2/3/S/Q)"
 
 switch ($choice.ToUpper()) {
     "1" {
-        # Production mode with Cloudflare Tunnel
-        if (-not (Test-CloudflaredInstalled)) {
+        # Production mode with Cloudflare Tunnel (Docker token-based)
+        if (-not (Test-DockerInstalled)) {
             Write-Host ""
-            Write-Host "[ERROR] cloudflared not found!" -ForegroundColor Red
-            Write-Host "Install with: winget install --id Cloudflare.cloudflared" -ForegroundColor Yellow
+            Write-Host "[ERROR] Docker is not available." -ForegroundColor Red
+            Write-Host "Install/Start Docker Desktop to run the Cloudflare Tunnel container." -ForegroundColor Yellow
+            Write-Host ""
+            exit 1
+        }
+
+        $tunnelToken = Get-CloudflareTunnelToken
+        if (-not $tunnelToken) {
+            Write-Host ""
+            Write-Host "[ERROR] Cloudflare tunnel token not configured." -ForegroundColor Red
+            Write-Host "Create cloudflare-tunnel-token.local.txt (ignored by git)" -ForegroundColor Yellow
+            Write-Host "or set env var QWEN_CF_TUNNEL_TOKEN." -ForegroundColor Yellow
+            Write-Host "See: cloudflare-tunnel-token.local.txt.example" -ForegroundColor Gray
             Write-Host ""
             exit 1
         }
@@ -134,63 +168,13 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
             Write-Host "[OK] API is ready!" -ForegroundColor Green
         }
         
-        # Start Cloudflare Tunnel
-        Write-Host "Starting Cloudflare Tunnel..." -ForegroundColor Cyan
+        # Start Cloudflare Tunnel via Docker
+        Write-Host "Starting Cloudflare Tunnel (Docker)..." -ForegroundColor Cyan
+        docker rm -f qwen-cloudflared 2>$null | Out-Null
+        $containerId = docker run -d --rm --name qwen-cloudflared cloudflare/cloudflared:latest tunnel --no-autoupdate run --token $tunnelToken
         
-        # Verify tunnel config exists
-        $configPath = "$env:USERPROFILE\.cloudflared\config.yml"
-        if (-not (Test-Path $configPath)) {
-            Write-Host ""
-            Write-Host "[WARNING] Cloudflare tunnel config not found at: $configPath" -ForegroundColor Yellow
-            Write-Host "Tunnel may not work correctly. Run .\tunnel-debug.ps1 status for diagnostics" -ForegroundColor Yellow
-            Write-Host ""
-        }
-        
-        # Create temp script for tunnel
-        $tunnelTempScript = "$env:TEMP\start-qwen-tunnel.ps1"
-        $tunnelScriptContent = @'
-$host.UI.RawUI.WindowTitle = 'Cloudflare Tunnel - qwen.codeblazar.org'
-Write-Host '====================================================' -ForegroundColor Cyan
-Write-Host '  CLOUDFLARE TUNNEL' -ForegroundColor Green
-Write-Host '====================================================' -ForegroundColor Cyan
-Write-Host ''
-Write-Host 'Tunnel: qwen.codeblazar.org -> localhost:8000' -ForegroundColor White
-Write-Host 'Press Ctrl+C to stop the tunnel' -ForegroundColor Yellow
-Write-Host ''
-cloudflared tunnel --loglevel info run qwen
-if ($LASTEXITCODE -ne 0) {
-    Write-Host ''
-    Write-Host '====================================================' -ForegroundColor Red
-    Write-Host '  TUNNEL ERROR' -ForegroundColor Red
-    Write-Host '====================================================' -ForegroundColor Red
-    Write-Host ''
-    Write-Host 'Tunnel failed to start. Common issues:' -ForegroundColor Yellow
-    Write-Host '  1. Tunnel not authenticated' -ForegroundColor White
-    Write-Host '  2. Missing credentials file' -ForegroundColor White
-    Write-Host '  3. Tunnel deleted from dashboard' -ForegroundColor White
-    Write-Host ''
-    Write-Host 'Run diagnostics: .\tunnel-debug.ps1 status' -ForegroundColor Cyan
-}
-Write-Host ''
-Write-Host 'Tunnel stopped. Press any key to close...' -ForegroundColor Yellow
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
-'@
-        Set-Content -Path $tunnelTempScript -Value $tunnelScriptContent
-        $tunnelProcess = Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $tunnelTempScript -PassThru
-        
-        # Give tunnel time to start
         Write-Host "Waiting for tunnel to establish connection..." -ForegroundColor Yellow
         Start-Sleep -Seconds 5
-        
-        # Check if tunnel process is still running
-        $tunnelStillRunning = Get-Process -Id $tunnelProcess.Id -ErrorAction SilentlyContinue
-        if (-not $tunnelStillRunning) {
-            Write-Host ""
-            Write-Host "[WARNING] Tunnel process exited unexpectedly!" -ForegroundColor Red
-            Write-Host "Check the tunnel window for error details" -ForegroundColor Yellow
-            Write-Host "Or run: .\tunnel-debug.ps1 status" -ForegroundColor Cyan
-            Write-Host ""
-        }
         
         Write-Host ""
         Write-Host "====================================================" -ForegroundColor Green
@@ -211,7 +195,8 @@ $null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
         Write-Host ""
         Write-Host "Background Processes:" -ForegroundColor Gray
         Write-Host "  API Server (PID: $($apiProcess.Id))" -ForegroundColor Gray
-        Write-Host "  Tunnel (PID: $($tunnelProcess.Id))" -ForegroundColor Gray
+        Write-Host "  Tunnel (docker container: qwen-cloudflared)" -ForegroundColor Gray
+        Write-Host "  Tunnel Logs: docker logs -f qwen-cloudflared" -ForegroundColor Gray
         Write-Host ""
         Write-Host "Troubleshooting:" -ForegroundColor Cyan
         Write-Host "  Check status:  .\tunnel-debug.ps1 status" -ForegroundColor White

@@ -20,8 +20,26 @@ function Stop-QwenProcesses {
         Write-Host "Stopping existing tunnel..." -ForegroundColor Yellow
         Stop-Process -Name "cloudflared" -Force -ErrorAction SilentlyContinue
     }
+
+    # Stop Docker-based tunnel container if present
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($docker) {
+        docker rm -f qwen-cloudflared 2>$null | Out-Null
+    }
     
     Start-Sleep -Milliseconds 500
+}
+
+function Get-CloudflareTunnelToken {
+    $tokenFile = Join-Path $projectRoot "cloudflare-tunnel-token.local.txt"
+    if ($env:QWEN_CF_TUNNEL_TOKEN -and $env:QWEN_CF_TUNNEL_TOKEN.Trim()) {
+        return $env:QWEN_CF_TUNNEL_TOKEN.Trim()
+    }
+    if (Test-Path $tokenFile) {
+        $token = (Get-Content $tokenFile -Raw).Trim()
+        if ($token) { return $token }
+    }
+    return $null
 }
 
 Write-Host ""
@@ -38,12 +56,21 @@ $choice = Read-Host "Choice (1/2/3/Q)"
 
 switch ($choice.ToUpper()) {
     "1" {
-        # Check cloudflared
-        $cloudflared = Get-Command cloudflared -ErrorAction SilentlyContinue
-        if (-not $cloudflared) {
+        # Check Docker (preferred for tunnel) and token
+        $docker = Get-Command docker -ErrorAction SilentlyContinue
+        if (-not $docker) {
             Write-Host ""
-            Write-Host "[ERROR] cloudflared not found!" -ForegroundColor Red
-            Write-Host "Install: winget install --id Cloudflare.cloudflared" -ForegroundColor Yellow
+            Write-Host "[ERROR] docker not found!" -ForegroundColor Red
+            Write-Host "Install Docker Desktop so the tunnel can run in a container." -ForegroundColor Yellow
+            exit 1
+        }
+        $token = Get-CloudflareTunnelToken
+        if (-not $token) {
+            Write-Host ""
+            Write-Host "[ERROR] Cloudflare tunnel token not configured." -ForegroundColor Red
+            Write-Host "Create cloudflare-tunnel-token.local.txt (ignored by git)" -ForegroundColor Yellow
+            Write-Host "or set env var QWEN_CF_TUNNEL_TOKEN." -ForegroundColor Yellow
+            Write-Host "See: cloudflare-tunnel-token.local.txt.example" -ForegroundColor Gray
             exit 1
         }
         
@@ -96,20 +123,17 @@ switch ($choice.ToUpper()) {
         }
         
         Write-Host "Starting Cloudflare Tunnel (background)..." -ForegroundColor Cyan
-        
-        # Start tunnel as background job
-        $tunnelJob = Start-Job -ScriptBlock {
-            cloudflared tunnel run qwen
-        }
-        
-        Start-Sleep -Seconds 5
+
+        # Start tunnel container (detached)
+        docker rm -f qwen-cloudflared 2>$null | Out-Null
+        $containerId = docker run -d --rm --name qwen-cloudflared cloudflare/cloudflared:latest tunnel --no-autoupdate run --token $token
+        Start-Sleep -Seconds 2
         
         # Get process IDs
         $apiPort = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
         $apiPid = if ($apiPort) { $apiPort.OwningProcess } else { "Unknown" }
         
-        $tunnelProc = Get-Process -Name cloudflared -ErrorAction SilentlyContinue
-        $tunnelPid = if ($tunnelProc) { $tunnelProc.Id } else { "Unknown" }
+        $tunnelPid = "docker:$($containerId.Substring(0, [Math]::Min(12, $containerId.Length)))"
         
         Write-Host ""
         Write-Host "====================================================" -ForegroundColor Green
@@ -128,7 +152,7 @@ switch ($choice.ToUpper()) {
         Write-Host ""
         Write-Host "Background Processes:" -ForegroundColor Gray
         Write-Host "  API Server:  PID $apiPid (Job ID: $($apiJob.Id))" -ForegroundColor Gray
-        Write-Host "  Tunnel:      PID $tunnelPid (Job ID: $($tunnelJob.Id))" -ForegroundColor Gray
+        Write-Host "  Tunnel:      $tunnelPid (container: qwen-cloudflared)" -ForegroundColor Gray
         Write-Host ""
         Write-Host "To stop: .\launch-background.ps1 -> Option 2" -ForegroundColor Cyan
         Write-Host "To check: .\tunnel-debug.ps1 test" -ForegroundColor Cyan
@@ -171,13 +195,18 @@ switch ($choice.ToUpper()) {
             Write-Host "[X] API Server: Not running" -ForegroundColor Red
         }
         
-        # Check tunnel
-        $tunnelProc = Get-Process -Name cloudflared -ErrorAction SilentlyContinue
-        if ($tunnelProc) {
-            Write-Host "[OK] Tunnel: Running (PID: $($tunnelProc.Id))" -ForegroundColor Green
-            Write-Host "     Memory: $([math]::Round($tunnelProc.WorkingSet64 / 1MB, 2)) MB" -ForegroundColor Gray
+        # Check tunnel (Docker container)
+        $docker = Get-Command docker -ErrorAction SilentlyContinue
+        if ($docker) {
+            $cid = docker ps --filter "name=^/qwen-cloudflared$" --format "{{.ID}}" 2>$null
+            if ($cid) {
+                Write-Host "[OK] Tunnel: Running (docker container qwen-cloudflared)" -ForegroundColor Green
+                Write-Host "     Container ID: $cid" -ForegroundColor Gray
+            } else {
+                Write-Host "[X] Tunnel: Not running (docker container qwen-cloudflared not found)" -ForegroundColor Red
+            }
         } else {
-            Write-Host "[X] Tunnel: Not running" -ForegroundColor Red
+            Write-Host "[!] Tunnel: Docker not available" -ForegroundColor Yellow
         }
         
         # Check jobs

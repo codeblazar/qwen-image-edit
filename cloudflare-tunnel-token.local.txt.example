@@ -1,0 +1,10 @@
+# Cloudflare Tunnel token (LOCAL ONLY)
+#
+# Create a copy of this file named:
+#   cloudflare-tunnel-token.local.txt
+#
+# Put ONLY the tunnel token string in that file (no quotes).
+# Example:
+#   eyJhIjoi...snip...In0
+#
+# This file is ignored by git via .gitignore.

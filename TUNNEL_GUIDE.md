@@ -105,6 +105,14 @@ Start-Sleep -Seconds 15
 winget install --id Cloudflare.cloudflared
 ```
 
+#### 3b. Docker Tunnel Token Missing
+**Symptoms:**
+- Launch scripts or `tunnel-debug.ps1` report tunnel token not configured
+
+**Fix:**
+- Create `cloudflare-tunnel-token.local.txt` (see `cloudflare-tunnel-token.local.txt.example`), OR
+- Set env var `QWEN_CF_TUNNEL_TOKEN` before launching
+
 #### 4. Tunnel Configuration Missing
 **Symptoms:**
 - Config file not found at `C:\Users\<username>\.cloudflared\config.yml`
@@ -188,6 +196,16 @@ winget upgrade --id Cloudflare.cloudflared
 ```powershell
 cloudflared tunnel --loglevel debug run qwen
 ```
+
+### Manual Tunnel Start (Docker, Token-Based)
+
+If you created a new tunnel in Cloudflare and got a token, run:
+```powershell
+docker run --rm cloudflare/cloudflared:latest tunnel --no-autoupdate run --token <YOUR_TOKEN>
+```
+
+If the API is running on the Windows host and cloudflared runs in Docker, your Cloudflare public hostname origin should be:
+- `http://host.docker.internal:8000`
 
 ### Check Tunnel Connections
 ```powershell

@@ -35,6 +35,10 @@ api/.api_key_history
 # Local-only API config (do not commit)
 api/config.local.json
 
+# Cloudflare Tunnel token (local-only; do not commit)
+cloudflare-tunnel-token.local.txt
+.env.local
+
 # Model Cache
 .cache/
 *.safetensors

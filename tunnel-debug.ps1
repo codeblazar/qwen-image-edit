@@ -9,6 +9,51 @@ param(
 
 $ErrorActionPreference = "Continue"
 
+$ProjectRoot = $PSScriptRoot
+$TokenFilePath = Join-Path $ProjectRoot "cloudflare-tunnel-token.local.txt"
+
+function Get-CloudflareTunnelToken {
+    if ($env:QWEN_CF_TUNNEL_TOKEN -and $env:QWEN_CF_TUNNEL_TOKEN.Trim()) {
+        return $env:QWEN_CF_TUNNEL_TOKEN.Trim()
+    }
+    if (Test-Path $TokenFilePath) {
+        $token = (Get-Content $TokenFilePath -Raw).Trim()
+        if ($token) { return $token }
+    }
+    return $null
+}
+
+function Test-DockerInstalled {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if ($null -eq $docker) {
+        return $false
+    }
+    try {
+        $null = & docker version 2>$null
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Get-DockerTunnelContainerName {
+    return "qwen-cloudflared"
+}
+
+function Get-DockerTunnelStatus {
+    $name = Get-DockerTunnelContainerName
+    if (-not (Test-DockerInstalled)) {
+        return $null
+    }
+    try {
+        $out = & docker ps --filter "name=^/${name}$" --format "{{.ID}}" 2>$null
+        if ($out) { return $out.Trim() }
+        return ""
+    } catch {
+        return $null
+    }
+}
+
 function Write-Section {
     param([string]$Title)
     Write-Host ""
@@ -38,6 +83,19 @@ function Test-CloudflaredInstalled {
 
 function Get-TunnelInfo {
     Write-Section "Tunnel Configuration"
+
+    $token = Get-CloudflareTunnelToken
+    if ($token) {
+        Write-Host "[OK] Token-based tunnel configured (Docker mode)" -ForegroundColor Green
+        Write-Host "  Token source: " -NoNewline -ForegroundColor Gray
+        if ($env:QWEN_CF_TUNNEL_TOKEN) {
+            Write-Host "env:QWEN_CF_TUNNEL_TOKEN" -ForegroundColor White
+        } else {
+            Write-Host "$TokenFilePath" -ForegroundColor White
+        }
+        Write-Host "  Note: The token itself is not printed." -ForegroundColor Gray
+        return $true
+    }
     
     # Check config file
     $configPath = "$env:USERPROFILE\.cloudflared\config.yml"
@@ -48,6 +106,9 @@ function Get-TunnelInfo {
         Get-Content $configPath | ForEach-Object { Write-Host "  $_" -ForegroundColor White }
     } else {
         Write-Host "[X] Config file NOT FOUND: $configPath" -ForegroundColor Red
+        Write-Host "" 
+        Write-Host "If you are using a token-based tunnel, create: $TokenFilePath" -ForegroundColor Yellow
+        Write-Host "Or set env var: QWEN_CF_TUNNEL_TOKEN" -ForegroundColor Yellow
         return $false
     }
     
@@ -96,6 +157,20 @@ function Get-ProcessInfo {
         }
     } else {
         Write-Host "[X] No cloudflared processes running" -ForegroundColor Red
+    }
+
+    Write-Host ""
+
+    # Check Docker tunnel container
+    $containerId = Get-DockerTunnelStatus
+    if ($containerId -eq $null) {
+        Write-Host "[!] Docker tunnel: Docker not available" -ForegroundColor Yellow
+    } elseif ($containerId) {
+        Write-Host "[OK] Docker tunnel container running:" -ForegroundColor Green
+        Write-Host "  Name: $(Get-DockerTunnelContainerName)" -ForegroundColor Gray
+        Write-Host "  ID:   $containerId" -ForegroundColor Gray
+    } else {
+        Write-Host "[X] Docker tunnel container not running" -ForegroundColor Red
     }
 }
 
@@ -146,6 +221,49 @@ function Test-APIEndpoint {
 
 function Start-Tunnel {
     Write-Section "Starting Cloudflare Tunnel"
+
+    $token = Get-CloudflareTunnelToken
+    if ($token) {
+        if (-not (Test-DockerInstalled)) {
+            Write-Host "[X] Docker not available, but a tunnel token is configured." -ForegroundColor Red
+            Write-Host "Install/Start Docker Desktop, or run cloudflared natively." -ForegroundColor Yellow
+            return
+        }
+
+        $name = Get-DockerTunnelContainerName
+        $existing = Get-DockerTunnelStatus
+        if ($existing) {
+            Write-Host "[!] Docker tunnel already running (container: $name)" -ForegroundColor Yellow
+            Write-Host "  View logs: docker logs -f $name" -ForegroundColor Gray
+            return
+        }
+
+        # Check if API is running
+        $port8000 = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
+        if (-not $port8000) {
+            Write-Host "[!] WARNING: API Server not detected on port 8000" -ForegroundColor Yellow
+            Write-Host "  The tunnel can connect, but requests will fail until the API is up." -ForegroundColor Yellow
+        }
+
+        Write-Host "Starting token-based tunnel via Docker container..." -ForegroundColor Cyan
+        Write-Host "  Origin: http://host.docker.internal:8000" -ForegroundColor Gray
+        
+        # Ensure any stale container is removed
+        & docker rm -f $name 2>$null | Out-Null
+
+        # Start in detached mode
+        $containerId = & docker run -d --rm --name $name cloudflare/cloudflared:latest tunnel --no-autoupdate run --token $token 2>&1
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "[X] Failed to start Docker tunnel" -ForegroundColor Red
+            Write-Host "  $containerId" -ForegroundColor Gray
+            return
+        }
+
+        Write-Host "[OK] Docker tunnel started" -ForegroundColor Green
+        Write-Host "  Container: $name" -ForegroundColor Gray
+        Write-Host "  Logs:      docker logs -f $name" -ForegroundColor Gray
+        return
+    }
     
     # Check if already running
     $existing = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
@@ -203,6 +321,12 @@ $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
 
 function Stop-Tunnel {
     Write-Section "Stopping Cloudflare Tunnel"
+
+    # Stop Docker tunnel container (if present)
+    $name = Get-DockerTunnelContainerName
+    if (Test-DockerInstalled) {
+        & docker rm -f $name 2>$null | Out-Null
+    }
     
     $processes = Get-Process -Name "cloudflared" -ErrorAction SilentlyContinue
     if (-not $processes) {

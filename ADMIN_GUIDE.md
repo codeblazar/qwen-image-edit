@@ -10,7 +10,7 @@ This guide is the **bring-up checklist** for making `https://qwen.codeblazar.org
 For public access via `https://qwen.codeblazar.org/...`, the home PC must be running **both**:
 
 1. **Qwen API server** (FastAPI) listening on `localhost:8000`
-2. **Cloudflare Tunnel connector** (`cloudflared`) connected and routing `qwen.codeblazar.org` → `localhost:8000`
+2. **Cloudflare Tunnel connector** (recommended: Docker `cloudflare/cloudflared`) connected and routing `qwen.codeblazar.org` → the API
 
 If either is down, clients will fail.
 
@@ -57,7 +57,7 @@ If you see **Cloudflare Error 1033** in the browser:
 
 Typical causes:
 - `cloudflared` is not running
-- Tunnel credentials/config missing or not authenticated
+- Tunnel token/credentials missing or not authenticated
 - Tunnel exists in Cloudflare but has **no active connectors** (home PC offline)
 
 ---
@@ -68,6 +68,19 @@ Typical causes:
 
 ```powershell
 .\tunnel-debug.ps1 status
+```
+
+### Token-based tunnel (Docker) setup
+
+If you created a new tunnel in Cloudflare and got a **token**, provide it locally (do not commit it):
+
+Option A (recommended): create `cloudflare-tunnel-token.local.txt` (gitignored)
+- Put the token string as the only contents of that file
+- Template file: `cloudflare-tunnel-token.local.txt.example`
+
+Option B: set an environment variable before launching
+```powershell
+$env:QWEN_CF_TUNNEL_TOKEN = "<paste token>"
 ```
 
 ### Test local + public connectivity
@@ -117,8 +130,10 @@ Scripts:
 
 ## 7) Notes (Docker)
 
-This repo’s “production” path is **not Docker-based** by default.
-The public hostname is served via **Cloudflare Tunnel + a local Python FastAPI server**.
-If you later wrap it in Docker, you must still ensure the equivalent of:
-- API is reachable on the port the tunnel points to
-- cloudflared runs and is connected
+Recommended setup:
+- Run the API on the Windows host (Python/venv)
+- Run the Cloudflare connector in Docker (token-based)
+
+In Cloudflare’s public hostname configuration, the origin should be:
+- `http://localhost:8000` if `cloudflared` runs natively on Windows
+- `http://host.docker.internal:8000` if `cloudflared` runs inside Docker (Windows)
