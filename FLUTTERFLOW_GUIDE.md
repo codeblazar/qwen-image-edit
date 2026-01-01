@@ -24,6 +24,19 @@ This approach prevents timeouts and handles concurrent users effectively.
 2. **API Base URL** - `https://qwen.codeblazar.org/api/v1`
 3. **Model loaded** - The API needs a model loaded (done once by admin)
 
+### Server Must Be Running (Before You Start)
+
+If you see **Cloudflare Tunnel error 1033** when visiting `https://qwen.codeblazar.org/api/v1` (or `/docs`), that almost always means **the Cloudflare Tunnel is not connected to the origin server** (i.e., the server-side `cloudflared` tunnel process isn’t running/connected), or the API server isn’t running behind it.
+
+Before proceeding with FlutterFlow integration, the API administrator should ensure BOTH are running on the server:
+
+1. **API server** (FastAPI) listening on `localhost:8000`
+2. **Cloudflare tunnel** (`cloudflared tunnel run qwen`) connected and routing `qwen.codeblazar.org` → `localhost:8000`
+
+Recommended on the server:
+- Run `./launch.ps1` and choose **option 1 (API Server + Cloudflare Tunnel)**, OR
+- Run `./launch-background.ps1` and choose **option 1** (keeps services in the same window)
+
 **Important:** Store your API key in a configuration file or environment variable rather than hardcoding it. This makes key rotation easier when needed.
 
 ### Test the API First
@@ -34,6 +47,13 @@ https://qwen.codeblazar.org/docs
 ```
 
 You should see the Swagger UI documentation. If not, contact your API administrator.
+
+Also verify health (this confirms the tunnel is connected and the API is up):
+```
+https://qwen.codeblazar.org/api/v1/health
+```
+
+If `/docs` or `/api/v1/health` returns **Cloudflare error 1033**, it’s a server/tunnel issue (not a FlutterFlow configuration issue).
 
 ---
 

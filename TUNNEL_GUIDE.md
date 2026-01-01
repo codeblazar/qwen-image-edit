@@ -38,8 +38,27 @@ This shows:
 ```
 
 Tests both:
-- Local: `http://localhost:8000/health`
-- Public: `https://qwen.codeblazar.org/health`
+- Local: `http://localhost:8000/api/v1/health`
+- Public: `https://qwen.codeblazar.org/api/v1/health`
+
+### Cloudflare Error 1033
+
+If you see **Error 1033** from Cloudflare when visiting the public URL, Cloudflare is telling you it **cannot reach an active tunnel connection**.
+
+Common causes:
+- `cloudflared` is not running on the server
+- The tunnel is running but not authenticated / credentials missing
+- The tunnel exists in Cloudflare, but has **no active connectors**
+
+Quick fixes:
+```powershell
+# Start both API + tunnel
+.\launch.ps1  # choose option 1
+
+# Or verify tunnel connectivity
+.\tunnel-debug.ps1 status
+.\tunnel-debug.ps1 restart
+```
 
 ### Common Issues
 
@@ -148,8 +167,8 @@ When you start the tunnel with `.\tunnel-debug.ps1 start`, a new PowerShell wind
 
 - **Local Swagger UI:** http://localhost:8000/docs
 - **Public Swagger UI:** https://qwen.codeblazar.org/docs
-- **Local Health:** http://localhost:8000/health  
-- **Public Health:** https://qwen.codeblazar.org/health
+- **Local Health:** http://localhost:8000/api/v1/health  
+- **Public Health:** https://qwen.codeblazar.org/api/v1/health
 
 ## Files
 
