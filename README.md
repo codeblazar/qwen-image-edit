@@ -54,6 +54,19 @@ Access at http://localhost:7860   - The 40GB model **WILL NOT FIT** on RTX 4090 
 
 Swagger UI at http://localhost:8000/docs   - You need `nunchaku==1.0.1+torch2.5` for AI model quantization
 
+Which endpoint should clients use?
+- For public/client apps (including FlutterFlow), use the **queued** workflow: `POST /api/v1/submit` then poll `GET /api/v1/status/{job_id}`, then download `GET /api/v1/status/{job_id}/result`.
+- `POST /api/v1/edit` exists for **admin/testing** (synchronous) and is not the recommended public integration path.
+
+What is `dart-demo/`?
+- A small Dart CLI + minimal client library that implements the recommended `/submit` + polling flow.
+- Intended as a copy/paste reference for building the same request flow in FlutterFlow.
+
+Background / accidental-closure note:
+- `launch.ps1` opens a visible PowerShell window for the API (easy to monitor, but you can close it by accident).
+- `launch-background.ps1` runs the API + tunnel as PowerShell background jobs, but **you must keep that launcher window open** (closing it stops the jobs). Minimizing is fine.
+- If you need it to survive window closure/logoff, use a Scheduled Task or a service wrapper and rely on logs/health checks.
+
 
 
 See [`api/README.md`](api/README.md) for API documentation and test scripts.3. **❌ NOT USING VENV**: Do NOT install in system Python
