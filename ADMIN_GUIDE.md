@@ -18,6 +18,12 @@ If either is down, clients will fail.
 
 ## 2) Start Services (Recommended)
 
+Before starting, ensure:
+
+1. The home PC is powered on and online.
+2. **Docker Desktop is running** (required for the recommended tunnel-in-Docker setup).
+3. Your Cloudflare tunnel token is configured locally (see “Token-based tunnel (Docker) setup” below).
+
 On the home PC:
 
 ```powershell
