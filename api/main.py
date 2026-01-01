@@ -432,6 +432,58 @@ async def get_job_status(job_id: str):
     )
 
 
+@app.get("/api/v1/status/{job_id}/result", tags=["Job Queue"], dependencies=[Depends(verify_api_key)])
+async def get_job_result(job_id: str):
+    """
+    Download the result image for a completed job
+    
+    **Requirements:**
+    - Job must be in `completed` status
+    - Result image must exist
+    
+    **Returns:**
+    - PNG image file (direct download)
+    
+    **Error Cases:**
+    - 404: Job not found or not completed yet
+    - 500: Result file missing
+    """
+    from fastapi.responses import FileResponse
+    
+    job = job_queue.get_job(job_id)
+    
+    if not job:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} not found. It may have been cleaned up."
+        )
+    
+    if job.status != JobStatus.COMPLETED:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Job {job_id} is not completed yet. Current status: {job.status.value}"
+        )
+    
+    if not job.result_path:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Job {job_id} is completed but result path is missing."
+        )
+    
+    result_file = Path(job.result_path)
+    if not result_file.exists():
+        raise HTTPException(
+            status_code=500,
+            detail=f"Result file not found at {job.result_path}"
+        )
+    
+    return FileResponse(
+        path=str(result_file),
+        media_type="image/png",
+        filename=result_file.name
+    )
+
+
 @app.get("/api/v1/queue", response_model=QueueStatusResponse, tags=["Job Queue"], dependencies=[Depends(verify_api_key)])
 async def get_queue_status():
     """

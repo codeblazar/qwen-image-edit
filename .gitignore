@@ -20,6 +20,7 @@ output_image_edit_plus_*.png
 generated-images/*.png
 generated-images/*.jpg
 generated-images/*.jpeg
+generated-images/
 output/
 
 # User-specific configuration
@@ -80,6 +81,11 @@ checkpoints/
 # Jupyter
 .ipynb_checkpoints/
 *.ipynb
+
+# Local demo artifacts
+python-demo/*.png
+python-demo/*.jpg
+python-demo/*.jpeg
 
 # Test files
 test_*.py
