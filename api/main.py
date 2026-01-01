@@ -1,6 +1,10 @@
-"""
-FastAPI REST API for Qwen Image Edit
-Provides Swagger/OpenAPI interface for instruction-based image editing
+"""FastAPI REST API for Qwen Image Edit.
+
+Provides Swagger/OpenAPI interface for instruction-based image editing.
+
+Note: On Windows, default console encodings can cause UnicodeEncodeError
+when printing non-ASCII text. We reconfigure stdout/stderr to UTF-8 with
+replacement to prevent request-time logs from crashing the server.
 """
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, Header, Depends, Query
 from fastapi.responses import Response, JSONResponse
@@ -8,6 +12,7 @@ from PIL import Image
 import io
 import os
 import json
+import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Literal
@@ -15,7 +20,21 @@ from typing import Optional, Literal
 from models import ModelInfo, HealthResponse, JobSubmitResponse, JobStatusResponse, QueueStatusResponse
 from pipeline_manager import PipelineManager
 from job_queue import JobQueue, JobStatus
+from prompt_filter import PromptFilterConfig, DEFAULT_BLOCKED_PROMPT_TERMS, validate_prompt_fields
 import asyncio
+
+
+def _configure_console_utf8() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            if hasattr(stream, "reconfigure"):
+                stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            # Best-effort only.
+            pass
+
+
+_configure_console_utf8()
 
 
 # Configuration Constants
@@ -42,6 +61,39 @@ def load_local_config() -> dict:
 
 
 LOCAL_CONFIG = load_local_config()
+
+
+def _build_prompt_filter_config(local_config: dict) -> PromptFilterConfig:
+    enabled = bool(local_config.get("prompt_filter_enabled", True))
+
+    # If the key is missing entirely, use the default list.
+    # If the key exists (even as []), respect it.
+    if "blocked_prompt_terms" in local_config:
+        blocked_terms = local_config.get("blocked_prompt_terms") or []
+    else:
+        blocked_terms = list(DEFAULT_BLOCKED_PROMPT_TERMS)
+
+    return PromptFilterConfig(enabled=enabled, blocked_terms=blocked_terms)
+
+
+PROMPT_FILTER_CONFIG = _build_prompt_filter_config(LOCAL_CONFIG)
+
+
+def enforce_prompt_policy(instruction: str, system_prompt: Optional[str]) -> None:
+    blocked = validate_prompt_fields(
+        instruction=instruction,
+        system_prompt=system_prompt,
+        config=PROMPT_FILTER_CONFIG,
+    )
+    if blocked:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Prompt contains disallowed term(s): "
+                + ", ".join(blocked)
+                + ". Please revise and try again."
+            ),
+        )
 
 # Default preset to load on startup.
 # Priority: local config file -> env var -> 4-step
@@ -373,6 +425,9 @@ async def submit_job(
                 status_code=400,
                 detail=f"Instruction too long ({len(instruction)} chars). Maximum {MAX_INSTRUCTION_LENGTH} characters."
             )
+
+        # Prompt content policy checks
+        enforce_prompt_policy(instruction=instruction, system_prompt=system_prompt)
         
         if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:
             raise HTTPException(
@@ -623,6 +678,9 @@ async def edit_image(
                 status_code=400,
                 detail=f"Instruction too long ({len(instruction)} chars). Maximum {MAX_INSTRUCTION_LENGTH} characters."
             )
+
+        # Prompt content policy checks
+        enforce_prompt_policy(instruction=instruction, system_prompt=system_prompt)
         
         # Validate image format
         if image.content_type not in ["image/jpeg", "image/png", "image/jpg"]:

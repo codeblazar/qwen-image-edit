@@ -21,6 +21,10 @@ The API accepts the following image formats:
 - Maximum dimensions: **2048 x 2048 pixels**
 - Files larger than limits will be rejected with HTTP 400
 
+**Prompt filtering:**
+- Requests may be rejected with HTTP 400 if `instruction` or `system_prompt` contains disallowed terms.
+- Configure via `api/config.local.json` (see `api/config.local.json.example`).
+
 ## 📋 Prerequisites
 
 **You must install the main Qwen project first!**

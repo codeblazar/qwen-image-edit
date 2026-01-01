@@ -1,3 +1,13 @@
 {
-  "default_preset": "4-step"
+  "default_preset": "4-step",
+
+  "prompt_filter_enabled": true,
+  "blocked_prompt_terms": [
+    "nude",
+    "naked",
+    "topless",
+    "nsfw",
+    "deepfake",
+    "fake"
+  ]
 }

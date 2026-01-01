@@ -94,6 +94,9 @@ python-demo/*.png
 python-demo/*.jpg
 python-demo/*.jpeg
 
+# Local scratch images (do not commit)
+test_input.png
+
 # Test files
 test_*.py
 *_test.py
