@@ -5,6 +5,12 @@
 
 ---
 
+## 🔧 Future Enhancements
+
+- Make `launch-background.ps1` start the API in a way that survives closing the launcher window (e.g., Scheduled Task / service wrapper instead of a PowerShell background job).
+
+---
+
 ## 📋 ROOT CAUSE ANALYSIS
 
 The error occurs because:

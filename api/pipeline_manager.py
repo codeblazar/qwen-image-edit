@@ -10,6 +10,7 @@ import random
 import time
 from datetime import datetime
 import asyncio
+import os
 
 
 class PipelineManager:
@@ -55,6 +56,17 @@ class PipelineManager:
         # Track operation state
         self.is_loading = False
         self.is_generating = False
+
+        # Logging control (reduce console noise by default)
+        # Levels: QUIET < INFO < DEBUG
+        self._log_level = (os.getenv("QWEN_API_LOG_LEVEL") or "INFO").strip().upper()
+
+    def _log(self, level: str, message: str) -> None:
+        level = (level or "INFO").upper()
+        order = {"QUIET": 0, "INFO": 1, "DEBUG": 2}
+        current = order.get(self._log_level, 1)
+        if order.get(level, 1) <= current:
+            print(message)
     
     def get_model_info(self, model_key: str) -> Dict:
         """Get information about a specific model"""
@@ -81,7 +93,7 @@ class PipelineManager:
             
             # Return cached pipeline if it's the same model
             if self.current_model == model_key and self.pipeline is not None:
-                print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Model '{model_key}' already loaded (using cache)")
+                self._log("INFO", f"[MODEL] '{model_key}' already loaded")
                 return self.pipeline
             
             # Set loading state
@@ -104,18 +116,18 @@ class PipelineManager:
     
     def _load_model_sync(self, model_key: str):
         if self.pipeline is not None and self.current_model == model_key:
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Using cached {model_key} model")
+            self._log("INFO", f"[MODEL] Using cached '{model_key}'")
             return self.pipeline
-        
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Starting to load {model_key} model...")
+
+        self._log("INFO", f"[MODEL] Loading '{model_key}'...")
         load_start = time.time()
         
         # Clear previous pipeline
         if self.pipeline is not None:
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Clearing previous model from memory...")
+            self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Clearing previous model from memory...")
             del self.pipeline
             torch.cuda.empty_cache()
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Previous model cleared")
+            self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Previous model cleared")
         
         # Load new pipeline using nunchaku quantized models
         config = self.MODEL_CONFIGS[model_key]
@@ -127,7 +139,7 @@ class PipelineManager:
         else:
             safetensors_file = "svdq-int4_r128-qwen-image-edit-2509.safetensors"
         
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Loading quantized transformer: {safetensors_file}")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Loading quantized transformer: {safetensors_file}")
         transformer_start = time.time()
         
         # Load quantized transformer
@@ -137,9 +149,9 @@ class PipelineManager:
         )
         
         transformer_time = time.time() - transformer_start
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Transformer loaded in {transformer_time:.2f}s")
-        
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Loading pipeline...")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Transformer loaded in {transformer_time:.2f}s")
+
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Loading pipeline...")
         pipeline_start = time.time()
         
         # Load pipeline with quantized transformer
@@ -150,31 +162,38 @@ class PipelineManager:
         ).to(self.device)
         
         pipeline_time = time.time() - pipeline_start
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Pipeline loaded in {pipeline_time:.2f}s")
-        
-        # CRITICAL: Enable CPU offloading for performance
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Configuring memory offloading...")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Pipeline loaded in {pipeline_time:.2f}s")
+
+        # Enable CPU offloading
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Configuring memory offloading...")
         offload_start = time.time()
         
         gpu_memory = get_gpu_memory()
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] GPU Memory: {gpu_memory}GB")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] GPU Memory: {gpu_memory}GB")
         
         if gpu_memory > 18:
             self.pipeline.enable_model_cpu_offload()
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Enabled model CPU offload")
+            self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Enabled model CPU offload")
+            offload_mode = "model_cpu_offload"
         else:
             self.transformer.set_offload(True, use_pin_memory=False, num_blocks_on_gpu=1)
             self.pipeline._exclude_from_cpu_offload.append("transformer")
             self.pipeline.enable_sequential_cpu_offload()
-            print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Enabled sequential CPU offload")
+            self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Enabled sequential CPU offload")
+            offload_mode = "sequential_cpu_offload"
         
         self.pipeline.set_progress_bar_config(disable=None)
         
         offload_time = time.time() - offload_start
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Offloading configured in {offload_time:.2f}s")
-        
         total_time = time.time() - load_start
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] TOTAL MODEL LOAD TIME: {total_time:.2f}s")
+        self._log(
+            "INFO",
+            f"[MODEL] Loaded '{model_key}' in {total_time:.2f}s (offload={offload_mode}, gpu_mem={gpu_memory}GB)",
+        )
+
+        # Only keep the detailed breakdown in DEBUG
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Offloading configured in {offload_time:.2f}s")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] TOTAL MODEL LOAD TIME: {total_time:.2f}s")
         
         self.current_model = model_key
         return self.pipeline
@@ -233,11 +252,10 @@ class PipelineManager:
         Returns:
             Tuple of (Generated PIL Image, seed used)
         """
-        print(f"\n[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Starting image generation...")
+        self._log("INFO", f"[GEN] Start (model={model_key})")
         generation_start = time.time()
         
         # Load model if needed (this is synchronous, but should already be loaded)
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Checking model...")
         if self.pipeline is None or self.current_model != model_key:
             raise RuntimeError(f"Model {model_key} not loaded. This should not happen - call load_model first.")
         
@@ -249,7 +267,7 @@ class PipelineManager:
         if seed is None:
             seed = random.randint(0, 2**32 - 1)
         
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Using seed: {seed}")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Using seed: {seed}")
         
         # Create generator with seed (matches Gradio UI approach)
         generator = torch.manual_seed(seed)
@@ -266,7 +284,7 @@ class PipelineManager:
         else:
             full_prompt = f"{face_preservation} {instruction}"
         
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Prompt: {full_prompt[:100]}...")
+        self._log("DEBUG", f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Prompt: {full_prompt[:100]}...")
         
         # Enhanced negative prompt for face preservation
         negative_prompt = (
@@ -276,7 +294,7 @@ class PipelineManager:
         )
         
         # Generate image
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [INFO] Starting inference ({config['steps']} steps)...")
+        self._log("INFO", f"[GEN] Inference ({config['steps']} steps)...")
         inference_start = time.time()
         
         # Use inference mode for better performance (matches Gradio UI)
@@ -293,9 +311,7 @@ class PipelineManager:
         
         inference_time = time.time() - inference_start
         total_time = time.time() - generation_start
-        
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] Inference completed in {inference_time:.2f}s")
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}] [OK] TOTAL GENERATION TIME: {total_time:.2f}s")
-        print(f"[{datetime.now().strftime('%H:%M:%S.%f')[:-3]}]    └─ Inference: {inference_time:.2f}s\n")
+
+        self._log("INFO", f"[GEN] Done in {total_time:.2f}s (inference={inference_time:.2f}s)")
         
         return result.images[0], seed

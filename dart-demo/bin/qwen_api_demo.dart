@@ -20,7 +20,7 @@ void printUsage() {
   stdout.writeln('  --timeout-minutes <int>  (default: 15)');
   stdout.writeln('');
   stdout.writeln('Example:');
-  stdout.writeln('  dart run bin/qwen_api_demo.dart --api-key YOUR_KEY --image C:/in.png --instruction "Add sunglasses" --out C:/out.png');
+  stdout.writeln('  dart run bin/qwen_api_demo.dart --api-key YOUR_KEY --image C:/in.png --instruction "Make the model have short hair" --out C:/out.png');
 }
 
 Map<String, String?> parseArgs(List<String> args) {

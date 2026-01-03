@@ -49,12 +49,13 @@ function Test-CloudflaredInstalled {
 function Test-DockerInstalled {
     $docker = Get-Command docker -ErrorAction SilentlyContinue
     if ($null -eq $docker) { return $false }
-    try {
-        $null = & docker version 2>$null
-        return $true
-    } catch {
-        return $false
-    }
+
+    # External commands typically don't throw on non-zero exit codes.
+    # Explicitly check $LASTEXITCODE to verify Docker Desktop daemon is reachable.
+    $null = & docker info 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    return $true
 }
 
 function Get-CloudflareTunnelToken {
@@ -67,6 +68,21 @@ function Get-CloudflareTunnelToken {
         if ($token) { return $token }
     }
     return $null
+}
+
+function Get-ApiHealth {
+    param(
+        [Parameter(Mandatory=$true)][string]$Url
+    )
+
+    try {
+        # Use curl.exe to avoid Invoke-WebRequest parsing/security prompts
+        $jsonText = & curl.exe -s --max-time 2 $Url
+        if (-not $jsonText) { return $null }
+        return $jsonText | ConvertFrom-Json
+    } catch {
+        return $null
+    }
 }
 
 Write-Host ""
@@ -94,8 +110,9 @@ switch ($choice.ToUpper()) {
         # Production mode with Cloudflare Tunnel (Docker token-based)
         if (-not (Test-DockerInstalled)) {
             Write-Host ""
-            Write-Host "[ERROR] Docker is not available." -ForegroundColor Red
-            Write-Host "Install/Start Docker Desktop to run the Cloudflare Tunnel container." -ForegroundColor Yellow
+            Write-Host "[ERROR] Docker Desktop is not running (or not reachable)." -ForegroundColor Red
+            Write-Host "Start Docker Desktop and wait until it shows 'Docker is running', then retry." -ForegroundColor Yellow
+            Write-Host "(We need Docker to run the Cloudflare Tunnel container.)" -ForegroundColor Gray
             Write-Host ""
             exit 1
         }
@@ -141,22 +158,24 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
         Set-Content -Path $apiTempScript -Value $apiScriptContent
         $apiProcess = Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $apiTempScript -PassThru
         
-        # Wait for API to start
-        Write-Host "Waiting for API to start..." -ForegroundColor Yellow
-        $maxAttempts = 15
+        # Wait for API + model to become ready (reduce polling frequency)
+        Write-Host "Waiting for API + model to finish loading..." -ForegroundColor Yellow
+        $initialDelaySeconds = 20
+        $pollIntervalSeconds = 10
+        $maxAttempts = 60  # ~10 minutes after initial delay
         $attempt = 0
         $apiReady = $false
-        
+
+        Start-Sleep -Seconds $initialDelaySeconds
+
         while ($attempt -lt $maxAttempts -and -not $apiReady) {
-            Start-Sleep -Seconds 1
             $attempt++
-            try {
-                $response = Invoke-WebRequest -Uri "http://localhost:8000/api/v1/health" -TimeoutSec 2 -ErrorAction SilentlyContinue
-                if ($response.StatusCode -eq 200) {
-                    $apiReady = $true
-                }
-            } catch {
+            $health = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+            if ($health -and $health.status -eq "healthy" -and $health.model_loaded -eq $true -and $health.is_loading -eq $false) {
+                $apiReady = $true
+            } else {
                 Write-Host "." -NoNewline -ForegroundColor Gray
+                Start-Sleep -Seconds $pollIntervalSeconds
             }
         }
         
@@ -167,6 +186,14 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
             Write-Host ""
             Write-Host "[OK] API is ready!" -ForegroundColor Green
         }
+
+        # Report health/model state (local)
+        $localHealth = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+        if ($localHealth) {
+            Write-Host "[HEALTH] Local: status=$($localHealth.status) model_loaded=$($localHealth.model_loaded) current_model=$($localHealth.current_model) is_loading=$($localHealth.is_loading)" -ForegroundColor Gray
+        } else {
+            Write-Host "[HEALTH] Local: unable to read /api/v1/health" -ForegroundColor Yellow
+        }
         
         # Start Cloudflare Tunnel via Docker
         Write-Host "Starting Cloudflare Tunnel (Docker)..." -ForegroundColor Cyan
@@ -175,6 +202,14 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
         
         Write-Host "Waiting for tunnel to establish connection..." -ForegroundColor Yellow
         Start-Sleep -Seconds 5
+
+        # Report health/model state (public) if reachable
+        $publicHealth = Get-ApiHealth -Url "https://qwen.codeblazar.org/api/v1/health"
+        if ($publicHealth) {
+            Write-Host "[HEALTH] Public: status=$($publicHealth.status) model_loaded=$($publicHealth.model_loaded) current_model=$($publicHealth.current_model) is_loading=$($publicHealth.is_loading)" -ForegroundColor Gray
+        } else {
+            Write-Host "[HEALTH] Public: not reachable yet (tunnel/DNS may still be connecting)" -ForegroundColor Yellow
+        }
         
         Write-Host ""
         Write-Host "====================================================" -ForegroundColor Green
@@ -188,7 +223,7 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
         Write-Host "Public Access (Cloudflare Tunnel):" -ForegroundColor Cyan
         Write-Host "  Swagger UI:  https://qwen.codeblazar.org/docs" -ForegroundColor White
         Write-Host "  Health:      https://qwen.codeblazar.org/api/v1/health" -ForegroundColor White
-        Write-Host "  [!] Allow 10-15 seconds for tunnel to connect" -ForegroundColor Yellow
+        Write-Host "  Wait for API health confirmation (HTTP 200 / healthy)" -ForegroundColor Yellow
         Write-Host ""
         Write-Host "API Key:" -ForegroundColor Yellow
         Write-Host "  $apiKey" -ForegroundColor White
@@ -239,7 +274,36 @@ Write-Host 'API stopped. Press any key to close...' -ForegroundColor Yellow
         Set-Content -Path $apiTempScript -Value $apiScriptContent
         $apiProcess = Start-Process powershell -ArgumentList "-NoExit", "-ExecutionPolicy", "Bypass", "-File", $apiTempScript -PassThru
         
-        Start-Sleep -Seconds 3
+        # Wait for API + default model load to complete (reduce polling frequency)
+        Write-Host "Waiting for API + model to finish loading..." -ForegroundColor Yellow
+        $initialDelaySeconds = 20
+        $pollIntervalSeconds = 10
+        $maxAttempts = 60  # ~10 minutes after initial delay
+        $attempt = 0
+        $apiReady = $false
+
+        Start-Sleep -Seconds $initialDelaySeconds
+
+        while ($attempt -lt $maxAttempts -and -not $apiReady) {
+            $attempt++
+            $health = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+            if ($health -and $health.status -eq "healthy" -and $health.model_loaded -eq $true -and $health.is_loading -eq $false) {
+                $apiReady = $true
+            } else {
+                Write-Host "." -NoNewline -ForegroundColor Gray
+                Start-Sleep -Seconds $pollIntervalSeconds
+            }
+        }
+
+        Write-Host ""
+
+        # Report health/model state (local)
+        $localHealth = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+        if ($localHealth) {
+            Write-Host "[HEALTH] Local: status=$($localHealth.status) model_loaded=$($localHealth.model_loaded) current_model=$($localHealth.current_model) is_loading=$($localHealth.is_loading)" -ForegroundColor Gray
+        } else {
+            Write-Host "[HEALTH] Local: unable to read /api/v1/health" -ForegroundColor Yellow
+        }
         
         Write-Host ""
         Write-Host "====================================================" -ForegroundColor Green

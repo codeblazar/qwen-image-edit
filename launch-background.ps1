@@ -42,6 +42,31 @@ function Get-CloudflareTunnelToken {
     return $null
 }
 
+function Get-ApiHealth {
+    param(
+        [Parameter(Mandatory=$true)][string]$Url
+    )
+
+    try {
+        $jsonText = & curl.exe -s --max-time 2 $Url
+        if (-not $jsonText) { return $null }
+        return $jsonText | ConvertFrom-Json
+    } catch {
+        return $null
+    }
+}
+
+function Test-DockerDesktopRunning {
+    $docker = Get-Command docker -ErrorAction SilentlyContinue
+    if (-not $docker) { return $false }
+
+    # External commands don't throw on non-zero exit codes; check $LASTEXITCODE.
+    $null = & docker info 2>$null
+    if ($LASTEXITCODE -ne 0) { return $false }
+
+    return $true
+}
+
 Write-Host ""
 Write-Host "====================================================" -ForegroundColor Cyan
 Write-Host "    QWEN IMAGE EDIT - BACKGROUND LAUNCHER" -ForegroundColor Green
@@ -57,11 +82,11 @@ $choice = Read-Host "Choice (1/2/3/Q)"
 switch ($choice.ToUpper()) {
     "1" {
         # Check Docker (preferred for tunnel) and token
-        $docker = Get-Command docker -ErrorAction SilentlyContinue
-        if (-not $docker) {
+        if (-not (Test-DockerDesktopRunning)) {
             Write-Host ""
-            Write-Host "[ERROR] docker not found!" -ForegroundColor Red
-            Write-Host "Install Docker Desktop so the tunnel can run in a container." -ForegroundColor Yellow
+            Write-Host "[ERROR] Docker Desktop is not running (or not reachable)." -ForegroundColor Red
+            Write-Host "Start Docker Desktop and wait until it shows 'Docker is running', then retry." -ForegroundColor Yellow
+            Write-Host "(We need Docker to run the Cloudflare Tunnel container.)" -ForegroundColor Gray
             exit 1
         }
         $token = Get-CloudflareTunnelToken
@@ -95,22 +120,24 @@ switch ($choice.ToUpper()) {
             python main.py
         } -ArgumentList $activateScript, "$projectRoot\api"
         
-        # Wait for API
-        Write-Host "Waiting for API to start..." -ForegroundColor Yellow
-        $maxAttempts = 20
+        # Wait for API + model to become ready (reduce polling frequency)
+        Write-Host "Waiting for API + model to finish loading..." -ForegroundColor Yellow
+        $initialDelaySeconds = 20
+        $pollIntervalSeconds = 10
+        $maxAttempts = 60  # ~10 minutes after initial delay
         $attempt = 0
         $apiReady = $false
-        
+
+        Start-Sleep -Seconds $initialDelaySeconds
+
         while ($attempt -lt $maxAttempts -and -not $apiReady) {
-            Start-Sleep -Seconds 1
             $attempt++
-            try {
-                $response = Invoke-WebRequest -Uri "http://localhost:8000/api/v1/health" -TimeoutSec 2 -ErrorAction SilentlyContinue
-                if ($response.StatusCode -eq 200) {
-                    $apiReady = $true
-                }
-            } catch {
+            $health = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+            if ($health -and $health.status -eq "healthy" -and $health.model_loaded -eq $true -and $health.is_loading -eq $false) {
+                $apiReady = $true
+            } else {
                 Write-Host "." -NoNewline -ForegroundColor Gray
+                Start-Sleep -Seconds $pollIntervalSeconds
             }
         }
         
@@ -121,6 +148,14 @@ switch ($choice.ToUpper()) {
             Write-Host ""
             Write-Host "[WARNING] API startup taking longer than expected..." -ForegroundColor Yellow
         }
+
+        # Report health/model state (local)
+        $localHealth = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+        if ($localHealth) {
+            Write-Host "[HEALTH] Local: status=$($localHealth.status) model_loaded=$($localHealth.model_loaded) current_model=$($localHealth.current_model) is_loading=$($localHealth.is_loading)" -ForegroundColor Gray
+        } else {
+            Write-Host "[HEALTH] Local: unable to read /api/v1/health" -ForegroundColor Yellow
+        }
         
         Write-Host "Starting Cloudflare Tunnel (background)..." -ForegroundColor Cyan
 
@@ -128,10 +163,18 @@ switch ($choice.ToUpper()) {
         docker rm -f qwen-cloudflared 2>$null | Out-Null
         $containerId = docker run -d --rm --name qwen-cloudflared cloudflare/cloudflared:latest tunnel --no-autoupdate run --token $token
         Start-Sleep -Seconds 2
+
+        # Report health/model state (public) if reachable
+        $publicHealth = Get-ApiHealth -Url "https://qwen.codeblazar.org/api/v1/health"
+        if ($publicHealth) {
+            Write-Host "[HEALTH] Public: status=$($publicHealth.status) model_loaded=$($publicHealth.model_loaded) current_model=$($publicHealth.current_model) is_loading=$($publicHealth.is_loading)" -ForegroundColor Gray
+        } else {
+            Write-Host "[HEALTH] Public: not reachable yet (tunnel/DNS may still be connecting)" -ForegroundColor Yellow
+        }
         
         # Get process IDs
         $apiPort = Get-NetTCPConnection -LocalPort 8000 -ErrorAction SilentlyContinue
-        $apiPid = if ($apiPort) { $apiPort.OwningProcess } else { "Unknown" }
+        $apiPid = if ($apiPort) { ($apiPort.OwningProcess | Select-Object -Unique | Select-Object -First 1) } else { "Unknown" }
         
         $tunnelPid = "docker:$($containerId.Substring(0, [Math]::Min(12, $containerId.Length)))"
         
@@ -191,6 +234,13 @@ switch ($choice.ToUpper()) {
             $apiProc = Get-Process -Id $apiPort.OwningProcess -ErrorAction SilentlyContinue
             Write-Host "[OK] API Server: Running (PID: $($apiPort.OwningProcess))" -ForegroundColor Green
             Write-Host "     Memory: $([math]::Round($apiProc.WorkingSet64 / 1MB, 2)) MB" -ForegroundColor Gray
+
+            $localHealth = Get-ApiHealth -Url "http://localhost:8000/api/v1/health"
+            if ($localHealth) {
+                Write-Host "     Health: status=$($localHealth.status) model_loaded=$($localHealth.model_loaded) current_model=$($localHealth.current_model) is_loading=$($localHealth.is_loading)" -ForegroundColor Gray
+            } else {
+                Write-Host "     Health: unable to read /api/v1/health" -ForegroundColor Yellow
+            }
         } else {
             Write-Host "[X] API Server: Not running" -ForegroundColor Red
         }
